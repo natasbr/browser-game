@@ -1,6 +1,6 @@
 {
-  "name": "Voxel Digimon P2P Test",
-  "description": "Mega Drive & Digimon PS1 era voxel P2P test game with PeerJS host and cast controls.",
+  "name": "Voxel Monsters",
+  "description": "Voxel monsters retro game with PeerJS host and cast controls.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
