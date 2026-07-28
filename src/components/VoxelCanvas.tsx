@@ -762,8 +762,8 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         p1State.vz *= 0.7;
       }
 
-      // Dash Skill
-      if (in1.dash && !prevP1Input.dash && !p1State.isDashing) {
+      // Dash Skill (Only in Explorer mode!)
+      if (in1.dash && !prevP1Input.dash && !p1State.isDashing && currentMode === 'explorer') {
         p1State.isDashing = true;
         p1State.dashTimer = 0.25;
         sound.playDash();
@@ -831,7 +831,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       }
 
       // Dash
-      if (in2.dash && !prevP2Input.dash && !p2State.isDashing) {
+      if (in2.dash && !prevP2Input.dash && !p2State.isDashing && currentMode === 'explorer') {
         p2State.isDashing = true;
         p2State.dashTimer = 0.25;
         sound.playDash();
@@ -1009,6 +1009,11 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         });
       } else if (currentMode === 'farm') {
         // --- FARM SIMULATOR LOGIC ---
+        const p1OldSeed = p1HeldSeed;
+        const p1OldFruit = p1HeldFruit;
+        const p2OldSeed = p2HeldSeed;
+        const p2OldFruit = p2HeldFruit;
+
         // Growth progression of crops
         farmCropsList.forEach((crop) => {
           if (crop.stage < 2) {
@@ -1211,6 +1216,24 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           }
         }
 
+        // Drop item if action pressed but no interaction consumed it
+        if ((in1.dash || in1.interact) && !prevP1Input.action) {
+          if (p1HeldSeed === p1OldSeed && p1HeldFruit === p1OldFruit && (p1HeldSeed || p1HeldFruit)) {
+            p1HeldSeed = null;
+            p1HeldFruit = null;
+            p1State.actionText = 'P1 DROPPED ITEM';
+            sound.playJump();
+          }
+        }
+        if ((in2.dash || in2.interact) && !prevP2Input.action) {
+          if (p2HeldSeed === p2OldSeed && p2HeldFruit === p2OldFruit && (p2HeldSeed || p2HeldFruit)) {
+            p2HeldSeed = null;
+            p2HeldFruit = null;
+            p2State.actionText = 'P2 DROPPED ITEM';
+            sound.playJump();
+          }
+        }
+
         prevP1Input.action = Boolean(in1.dash || in1.interact);
         prevP2Input.action = Boolean(in2.dash || in2.interact);
 
@@ -1254,12 +1277,26 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         const w = time * 14;
         p1Mesh.leftLeg.rotation.x = Math.sin(w) * 0.8;
         p1Mesh.rightLeg.rotation.x = -Math.sin(w) * 0.8;
-        p1Mesh.leftArm.rotation.x = -Math.sin(w) * 0.8;
-        p1Mesh.rightArm.rotation.x = Math.sin(w) * 0.8;
+        
+        if (p1HeldSeed || p1HeldFruit) {
+          p1Mesh.leftArm.rotation.x = -Math.PI / 2.5;
+          p1Mesh.rightArm.rotation.x = -Math.PI / 2.5;
+        } else {
+          p1Mesh.leftArm.rotation.x = -Math.sin(w) * 0.8;
+          p1Mesh.rightArm.rotation.x = Math.sin(w) * 0.8;
+        }
       } else {
         p1Mesh.leftLeg.rotation.x = 0;
         p1Mesh.rightLeg.rotation.x = 0;
         p1Mesh.bodyGroup.position.y = Math.sin(time * 3) * 0.05;
+
+        if (p1HeldSeed || p1HeldFruit) {
+          p1Mesh.leftArm.rotation.x = -Math.PI / 2.5;
+          p1Mesh.rightArm.rotation.x = -Math.PI / 2.5;
+        } else {
+          p1Mesh.leftArm.rotation.x = 0;
+          p1Mesh.rightArm.rotation.x = 0;
+        }
       }
 
       // P2 Mesh
@@ -1282,12 +1319,26 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         const w = time * 14;
         p2Mesh.leftLeg.rotation.x = Math.sin(w) * 0.8;
         p2Mesh.rightLeg.rotation.x = -Math.sin(w) * 0.8;
-        p2Mesh.leftArm.rotation.x = -Math.sin(w) * 0.8;
-        p2Mesh.rightArm.rotation.x = Math.sin(w) * 0.8;
+        
+        if (p2HeldSeed || p2HeldFruit) {
+          p2Mesh.leftArm.rotation.x = -Math.PI / 2.5;
+          p2Mesh.rightArm.rotation.x = -Math.PI / 2.5;
+        } else {
+          p2Mesh.leftArm.rotation.x = -Math.sin(w) * 0.8;
+          p2Mesh.rightArm.rotation.x = Math.sin(w) * 0.8;
+        }
       } else {
         p2Mesh.leftLeg.rotation.x = 0;
         p2Mesh.rightLeg.rotation.x = 0;
         p2Mesh.bodyGroup.position.y = Math.sin(time * 3) * 0.05;
+
+        if (p2HeldSeed || p2HeldFruit) {
+          p2Mesh.leftArm.rotation.x = -Math.PI / 2.5;
+          p2Mesh.rightArm.rotation.x = -Math.PI / 2.5;
+        } else {
+          p2Mesh.leftArm.rotation.x = 0;
+          p2Mesh.rightArm.rotation.x = 0;
+        }
       }
 
       // 6. DYNAMIC SPLIT SCREEN OR SINGLE CAMERA RENDERING
@@ -1302,16 +1353,18 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, curWidth, curHeight);
         camera.position.x += (p1State.x - camera.position.x) * 0.1;
-        camera.position.z += (p1State.z + 11 - camera.position.z) * 0.1;
-        camera.lookAt(p1State.x, 0, p1State.z);
+        camera.position.y += (10 - camera.position.y) * 0.1;
+        camera.position.z += (p1State.z + 13 - camera.position.z) * 0.1;
+        camera.lookAt(p1State.x, 0, p1State.z + 2);
         renderer.render(scene, camera);
       } else if (activeFocus === 'P2') {
         // Single focused camera on P2 (e.g. Cast P2 Remote)
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, curWidth, curHeight);
         camera.position.x += (p2State.x - camera.position.x) * 0.1;
-        camera.position.z += (p2State.z + 11 - camera.position.z) * 0.1;
-        camera.lookAt(p2State.x, 0, p2State.z);
+        camera.position.y += (10 - camera.position.y) * 0.1;
+        camera.position.z += (p2State.z + 13 - camera.position.z) * 0.1;
+        camera.lookAt(p2State.x, 0, p2State.z + 2);
         renderer.render(scene, camera);
       } else if (playerDistance > 8.0) {
         // --- DYNAMIC SPLIT SCREEN WHEN PLAYERS ARE FAR APART ---
@@ -1348,6 +1401,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         const midZ = (p1State.z + p2State.z) / 2;
 
         camera.position.x += (midX - camera.position.x) * 0.08;
+        camera.position.y += (8.5 - camera.position.y) * 0.08;
         camera.position.z += (midZ + 11 - camera.position.z) * 0.08;
         camera.lookAt(camera.position.x, 0, camera.position.z - 11);
 
