@@ -141,6 +141,90 @@ class RetroSoundEngine {
     }
   }
 
+  playGemCollect() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [587.33, 880.0, 1174.66]; // D5, A5, D6
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        const startTime = now + idx * 0.05;
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.12, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.12);
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  playChestOpen() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [392.0, 523.25, 659.25, 783.99, 1046.5]; // G4, C5, E5, G5, C6
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        const startTime = now + idx * 0.07;
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.15, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.2);
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  playDash() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } catch {
+      // ignore
+    }
+  }
+
   playConnectFanfare() {
     if (!this.enabled) return;
     this.initCtx();

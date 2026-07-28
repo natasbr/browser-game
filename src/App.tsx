@@ -64,10 +64,10 @@ export default function App() {
         {/* GAME LOGO */}
         <div className="retro-box p-6 bg-slate-900/90 border-4 border-amber-500 rounded-xl shadow-2xl glow-gold w-full">
           <h1 className="text-2xl md:text-3xl font-pixel text-amber-400 drop-shadow-[0_4px_0_#78350f] mb-3 leading-snug">
-            VOXEL MONSTERS
+            VOXEL MONSTERS 3D CO-OP
           </h1>
           <div className="text-xs font-vt text-slate-300 bg-slate-950/80 py-1 px-3 rounded border border-amber-500/30 inline-block">
-            PEERJS 1.5.2 • DIRECT BROWSER-TO-BROWSER
+            3D Z-AXIS MOVEMENT • CO-OP EXPLORER • DYNAMIC BIOMES
           </div>
         </div>
 
@@ -84,7 +84,7 @@ export default function App() {
             <div>
               <div className="text-sm font-pixel text-amber-950 mb-1">HOST</div>
               <div className="text-[10px] font-vt text-amber-900">
-                DISPLAY GAME & VOXEL MONSTER
+                DISPLAY 3D ARENA & CO-OP TEAM SCORES
               </div>
             </div>
           </button>
@@ -100,22 +100,22 @@ export default function App() {
             <div>
               <div className="text-sm font-pixel text-cyan-300 mb-1">CAST</div>
               <div className="text-[10px] font-vt text-slate-300">
-                INPUT CODE & CONTROL MONSTER
+                INPUT PIN & 3D TOUCH CONTROLLER
               </div>
             </div>
           </button>
         </div>
 
         {/* INSTRUCTION CARD */}
-        <div className="retro-box p-4 bg-slate-900/80 text-left w-full text-xs font-vt text-slate-300 flex flex-col gap-2 border-l-4 border-l-amber-500">
-          <div className="font-pixel text-[10px] text-amber-400 flex items-center gap-1.5">
-            <ShieldAlert className="w-4 h-4 text-amber-400" /> HOW TO PLAY 2-PLAYER MULTIPLAYER:
+        <div className="retro-box p-4 bg-slate-900/80 text-left w-full text-xs font-vt text-slate-300 flex flex-col gap-2 border-l-4 border-l-emerald-500">
+          <div className="font-pixel text-[10px] text-emerald-400 flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-emerald-400" /> HOW TO PLAY 3D CO-OP EXPLORER:
           </div>
           <ol className="list-decimal list-inside space-none flex flex-col gap-1 text-slate-300 leading-relaxed">
-            <li>Open this app on a main screen/tab and select <b className="text-amber-400">HOST</b>. Note the P1 and P2 PINs.</li>
-            <li>Player 1 opens <b className="text-amber-300">CAST</b> on a 2nd device/tab and enters <b className="text-amber-400">P1 PIN</b>.</li>
-            <li>Player 2 opens <b className="text-cyan-300">CAST</b> on a 3rd device/tab and enters <b className="text-cyan-400">P2 PIN</b>.</li>
-            <li>Both players control their voxel monsters in real-time on the Host arena!</li>
+            <li>Open this app on a main screen/tab and select <b className="text-amber-400">HOST</b>. Note P1 and P2 PINs.</li>
+            <li>Player 1 and Player 2 connect via <b className="text-cyan-300">CAST</b> on mobile devices/tabs using their PINs.</li>
+            <li>Walk freely along <b>X and Z axes</b> (Up/Down/Left/Right) in 3D space to collect gems, stars, & chests!</li>
+            <li>Team up near Golden Chests for a <b>Double Co-Op Team Bonus</b>! Dynamic biomes shift as you explore!</li>
           </ol>
         </div>
       </div>

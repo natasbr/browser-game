@@ -9,30 +9,38 @@ export type MonsterType =
   | 'terra_golem'
   | 'shadow_beast';
 
-export type StageTheme = 'cyber_grid' | 'volcanic_pit' | 'neon_dojo' | 'crystal_cave';
+export type StageTheme = 'cyber_grid' | 'volcanic_pit' | 'neon_dojo' | 'crystal_cave' | 'verdant_forest';
 
 export interface PlayerInputState {
+  up: boolean;
+  down: boolean;
   left: boolean;
   right: boolean;
   jump: boolean;
-  attack: boolean;
-  special: boolean;
+  dash: boolean;
 }
 
 export interface SinglePlayerState {
   x: number;
   y: number;
-  facing: 'left' | 'right';
-  hp: number;
-  maxHp: number;
-  energy: number; // 0 to 100 for Special
+  z: number;
+  facing: 'left' | 'right' | 'up' | 'down';
   score: number;
-  wins: number;
-  isAttacking: boolean;
-  isSpecialAttacking: boolean;
-  isHit: boolean;
+  gemsCollected: number;
+  isDashing: boolean;
   monsterType: MonsterType;
   actionText: string;
+}
+
+export interface CollectibleItem {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  type: 'gem' | 'star' | 'relic' | 'chest';
+  points: number;
+  active: boolean;
+  color: string;
 }
 
 export interface NetworkMessage<T = unknown> {
@@ -44,16 +52,12 @@ export interface NetworkMessage<T = unknown> {
 export interface GameStatePayload {
   p1: SinglePlayerState;
   p2: SinglePlayerState;
+  teamScore: number;
   stageTheme: StageTheme;
-  timer: number;
-  winner: PlayerSlot | 'DRAW' | null;
-  round: number;
+  biomeName: string;
+  distanceExplored: number;
+  collectibles: CollectibleItem[];
   announcement: string;
-  item?: {
-    x: number;
-    y: number;
-    type: 'health' | 'energy';
-    active: boolean;
-  } | null;
 }
+
 

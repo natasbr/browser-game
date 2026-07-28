@@ -10,7 +10,8 @@ import { sound } from '../lib/sound';
 import {
   ArrowLeft,
   ArrowRight,
-  Flame,
+  ArrowUp,
+  ArrowDown,
   Zap,
   Wifi,
   Volume2,
@@ -19,8 +20,9 @@ import {
   Gamepad2,
   ChevronLeft,
   Sparkles,
-  Shield,
-  Swords,
+  Compass,
+  Gem,
+  Wind,
 } from 'lucide-react';
 
 interface CastViewProps {
@@ -38,6 +40,8 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
   const [syncedState, setSyncedState] = useState<GameStatePayload | null>(null);
 
   // Pressed states for touch controls
+  const [isUpPressed, setIsUpPressed] = useState<boolean>(false);
+  const [isDownPressed, setIsDownPressed] = useState<boolean>(false);
   const [isLeftPressed, setIsLeftPressed] = useState<boolean>(false);
   const [isRightPressed, setIsRightPressed] = useState<boolean>(false);
 
@@ -66,15 +70,18 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isConnectedRef.current) return;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') handleUpPress();
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') handleDownPress();
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') handleLeftPress();
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') handleRightPress();
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') handleJumpPress();
-      if (e.key === 'f' || e.key === 'F' || e.key === 'j' || e.key === 'J' || e.key === 'Enter') handleAttackPress();
-      if (e.key === 'g' || e.key === 'G' || e.key === 'k' || e.key === 'K') handleSpecialPress();
+      if (e.key === ' ') handleJumpPress();
+      if (e.key === 'f' || e.key === 'F' || e.key === 'l' || e.key === 'L' || e.key === 'Shift') handleDashPress();
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (!isConnectedRef.current) return;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') handleUpRelease();
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') handleDownRelease();
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') handleLeftRelease();
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') handleRightRelease();
     };
@@ -98,13 +105,32 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
     }
   };
 
-  // Controller Handlers
-  const handleLeftPress = () => {
-    setIsLeftPressed(true);
-    sound.playBeep(280, 0.05);
-    sendClientMessage('player_action', { action: 'left_press' });
+  // Controller Direction Handlers
+  const handleUpPress = () => {
+    setIsUpPressed(true);
+    sound.playBeep(340, 0.04);
+    sendClientMessage('player_action', { action: 'up_press' });
+  };
+  const handleUpRelease = () => {
+    setIsUpPressed(false);
+    sendClientMessage('player_action', { action: 'up_release' });
   };
 
+  const handleDownPress = () => {
+    setIsDownPressed(true);
+    sound.playBeep(260, 0.04);
+    sendClientMessage('player_action', { action: 'down_press' });
+  };
+  const handleDownRelease = () => {
+    setIsDownPressed(false);
+    sendClientMessage('player_action', { action: 'down_release' });
+  };
+
+  const handleLeftPress = () => {
+    setIsLeftPressed(true);
+    sound.playBeep(280, 0.04);
+    sendClientMessage('player_action', { action: 'left_press' });
+  };
   const handleLeftRelease = () => {
     setIsLeftPressed(false);
     sendClientMessage('player_action', { action: 'left_release' });
@@ -112,10 +138,9 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
 
   const handleRightPress = () => {
     setIsRightPressed(true);
-    sound.playBeep(320, 0.05);
+    sound.playBeep(320, 0.04);
     sendClientMessage('player_action', { action: 'right_press' });
   };
-
   const handleRightRelease = () => {
     setIsRightPressed(false);
     sendClientMessage('player_action', { action: 'right_release' });
@@ -129,19 +154,11 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
     }
   };
 
-  const handleAttackPress = () => {
-    sound.playAttack();
-    sendClientMessage('player_action', { action: 'attack' });
+  const handleDashPress = () => {
+    sound.playDash();
+    sendClientMessage('player_action', { action: 'dash' });
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate(60);
-    }
-  };
-
-  const handleSpecialPress = () => {
-    sound.playAttack();
-    sendClientMessage('player_action', { action: 'special' });
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([80, 40, 120]);
     }
   };
 
@@ -174,9 +191,9 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
 
         <div className="text-center">
           <div className={`text-[10px] font-pixel ${isP2 ? 'text-cyan-400' : 'text-amber-400'}`}>
-            {assignedSlot ? `${assignedSlot} CONTROLLER` : 'CAST REMOTE'}
+            {assignedSlot ? `${assignedSlot} CO-OP REMOTE` : 'CAST REMOTE'}
           </div>
-          <div className="text-xs font-vt text-slate-400">VOXEL MONSTER CONTROLLER</div>
+          <div className="text-xs font-vt text-slate-400">3D VOXEL EXPLORER CONTROLLER</div>
         </div>
 
         <button onClick={toggleSound} className="retro-btn p-1.5 text-amber-300">
@@ -192,7 +209,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
           </div>
 
           <div>
-            <h2 className="text-sm font-pixel text-amber-400 mb-1">ENTER P1 OR P2 PIN</h2>
+            <h2 className="text-sm font-pixel text-amber-400 mb-1">ENTER HOST PIN</h2>
             <p className="text-xs font-vt text-slate-400">
               Type either Player 1 PIN or Player 2 PIN shown on the Host screen
             </p>
@@ -217,7 +234,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 inputPin.length === 4 ? 'opacity-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'
               }`}
             >
-              CONNECT TO ARENA
+              CONNECT TO CO-OP ARENA
             </button>
           </form>
 
@@ -239,54 +256,86 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                 SLOT: {assignedSlot} ({myState ? myState.monsterType.toUpperCase().replace('_', ' ') : 'MONSTER'})
               </span>
-              <span className="text-emerald-400">WINS: {myState?.wins ?? 0}</span>
+              <span className="text-emerald-400 font-pixel">
+                TEAM SCORE: {syncedState?.teamScore ?? 0}
+              </span>
             </div>
 
-            {/* HP AND ENERGY GAUGES */}
-            {myState && (
-              <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center text-[10px] font-pixel text-slate-300">
-                  <span>HP: {myState.hp} / 100</span>
-                  <span>ENERGY: {myState.energy}%</span>
-                </div>
-                <div className="w-full h-3 bg-slate-950 rounded border border-slate-800 overflow-hidden">
-                  <div
-                    className={`h-full ${isP2 ? 'bg-cyan-400' : 'bg-amber-400'} transition-all duration-150`}
-                    style={{ width: `${myState.hp}%` }}
-                  />
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded border border-slate-800 overflow-hidden">
-                  <div
-                    className="h-full bg-yellow-300"
-                    style={{ width: `${myState.energy}%` }}
-                  />
-                </div>
+            {/* MY STATS & BIOME */}
+            <div className="grid grid-cols-2 gap-2 text-xs font-pixel bg-slate-950 p-2 rounded border border-slate-800">
+              <div className="text-amber-300 flex items-center gap-1">
+                <Gem className="w-3.5 h-3.5 text-amber-400" />
+                MY PTS: {myState?.score ?? 0}
               </div>
-            )}
+              <div className="text-cyan-300 flex items-center gap-1 justify-end">
+                <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                {syncedState?.biomeName ?? 'CYBER GRID'}
+              </div>
+            </div>
 
             {/* ACTION LOG FEEDBACK */}
-            <div className="bg-slate-950 p-2 rounded border border-slate-800 text-center">
-              <div className="text-[9px] text-slate-500 font-pixel mb-0.5">STATUS FEEDBACK</div>
+            <div className="bg-slate-950/80 p-2 rounded border border-slate-800 text-center">
               <div className="text-xs font-pixel text-amber-300 tracking-wide animate-pulse">
-                {myState?.actionText || syncedState?.announcement || 'READY FOR BATTLE'}
+                {myState?.actionText || syncedState?.announcement || 'EXPLORE THE 3D ARENA!'}
               </div>
             </div>
           </div>
 
-          {/* TOUCH GAMEPAD */}
+          {/* TOUCH GAMEPAD WITH 3D D-PAD */}
           <div
             className={`w-full retro-box p-4 bg-slate-900/90 border-4 ${
               isP2 ? 'border-cyan-500/60' : 'border-amber-500/60'
-            } rounded-2xl flex flex-col items-center gap-5 my-auto shadow-2xl`}
+            } rounded-2xl flex flex-col items-center gap-4 my-auto shadow-2xl`}
           >
             <div className="text-[10px] font-pixel text-slate-300 tracking-widest flex items-center gap-2">
               <Gamepad2 className="w-4 h-4 text-amber-400" />
-              TOUCH CONTROLLER ({assignedSlot})
+              3D TOUCH CONTROLLER ({assignedSlot})
             </div>
 
-            <div className="w-full flex items-center justify-between gap-3 px-1">
-              {/* D-PAD (LEFT & RIGHT) */}
-              <div className="flex items-center gap-2">
+            <div className="w-full flex items-center justify-between gap-2 px-1">
+              {/* 3D CROSS D-PAD (UP, DOWN, LEFT, RIGHT) */}
+              <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center">
+                {/* UP */}
+                <button
+                  onMouseDown={handleUpPress}
+                  onMouseUp={handleUpRelease}
+                  onMouseLeave={handleUpRelease}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleUpPress();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    handleUpRelease();
+                  }}
+                  className={`absolute top-0 w-12 h-12 rounded-t-lg retro-btn flex items-center justify-center ${
+                    isUpPressed ? 'bg-amber-600 border-amber-300 scale-95' : 'bg-slate-800'
+                  }`}
+                >
+                  <ArrowUp className="w-6 h-6 text-slate-100" />
+                </button>
+
+                {/* DOWN */}
+                <button
+                  onMouseDown={handleDownPress}
+                  onMouseUp={handleDownRelease}
+                  onMouseLeave={handleDownRelease}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleDownPress();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    handleDownRelease();
+                  }}
+                  className={`absolute bottom-0 w-12 h-12 rounded-b-lg retro-btn flex items-center justify-center ${
+                    isDownPressed ? 'bg-amber-600 border-amber-300 scale-95' : 'bg-slate-800'
+                  }`}
+                >
+                  <ArrowDown className="w-6 h-6 text-slate-100" />
+                </button>
+
+                {/* LEFT */}
                 <button
                   onMouseDown={handleLeftPress}
                   onMouseUp={handleLeftRelease}
@@ -299,14 +348,14 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                     e.preventDefault();
                     handleLeftRelease();
                   }}
-                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-xl retro-btn flex flex-col items-center justify-center ${
+                  className={`absolute left-0 w-12 h-12 rounded-l-lg retro-btn flex items-center justify-center ${
                     isLeftPressed ? 'bg-amber-600 border-amber-300 scale-95' : 'bg-slate-800'
                   }`}
                 >
-                  <ArrowLeft className="w-8 h-8 text-slate-100" />
-                  <span className="text-[8px] font-pixel text-slate-300 mt-0.5">LEFT</span>
+                  <ArrowLeft className="w-6 h-6 text-slate-100" />
                 </button>
 
+                {/* RIGHT */}
                 <button
                   onMouseDown={handleRightPress}
                   onMouseUp={handleRightRelease}
@@ -319,17 +368,20 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                     e.preventDefault();
                     handleRightRelease();
                   }}
-                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-xl retro-btn flex flex-col items-center justify-center ${
+                  className={`absolute right-0 w-12 h-12 rounded-r-lg retro-btn flex items-center justify-center ${
                     isRightPressed ? 'bg-amber-600 border-amber-300 scale-95' : 'bg-slate-800'
                   }`}
                 >
-                  <ArrowRight className="w-8 h-8 text-slate-100" />
-                  <span className="text-[8px] font-pixel text-slate-300 mt-0.5">RIGHT</span>
+                  <ArrowRight className="w-6 h-6 text-slate-100" />
                 </button>
+
+                <div className="w-10 h-10 bg-slate-950 border border-slate-700 rounded-sm flex items-center justify-center text-[8px] font-pixel text-slate-500">
+                  3D
+                </div>
               </div>
 
-              {/* ACTION BUTTONS (JUMP, ATTACK, SUPER) */}
-              <div className="flex items-center gap-2">
+              {/* ACTION BUTTONS (JUMP, DASH) */}
+              <div className="flex items-center gap-3">
                 {/* JUMP */}
                 <button
                   onMouseDown={handleJumpPress}
@@ -343,41 +395,23 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                   <span className="text-[8px] font-pixel text-amber-950">JUMP</span>
                 </button>
 
-                {/* BASIC ATTACK */}
+                {/* DASH */}
                 <button
-                  onMouseDown={handleAttackPress}
+                  onMouseDown={handleDashPress}
                   onTouchStart={(e) => {
                     e.preventDefault();
-                    handleAttackPress();
+                    handleDashPress();
                   }}
-                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-full retro-btn-red flex flex-col items-center justify-center active:scale-95 shadow-lg border-2 border-rose-300"
+                  className="w-16 h-16 sm:w-18 sm:h-18 rounded-full retro-btn-red flex flex-col items-center justify-center active:scale-95 shadow-lg border-2 border-rose-300"
                 >
-                  <Flame className="w-7 h-7 text-white" />
-                  <span className="text-[8px] font-pixel text-white">ATTACK</span>
-                </button>
-
-                {/* SPECIAL SUPER BLAST */}
-                <button
-                  onMouseDown={handleSpecialPress}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleSpecialPress();
-                  }}
-                  disabled={Boolean(myState && myState.energy < 100)}
-                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-full flex flex-col items-center justify-center active:scale-95 transition-all shadow-xl border-2 ${
-                    myState && myState.energy >= 100
-                      ? 'bg-purple-600 border-yellow-300 text-yellow-200 animate-bounce'
-                      : 'bg-slate-800 border-slate-700 text-slate-600 opacity-60'
-                  }`}
-                >
-                  <Sparkles className="w-7 h-7" />
-                  <span className="text-[7px] font-pixel mt-0.5">SUPER</span>
+                  <Wind className="w-6 h-6 text-white" />
+                  <span className="text-[8px] font-pixel text-white">DASH</span>
                 </button>
               </div>
             </div>
 
             <div className="text-[9px] font-vt text-slate-400 bg-slate-950/90 px-3 py-1 rounded-full border border-slate-800">
-              KEYBOARD: [A / D] Move • [W] Jump • [F] Attack • [G] Super
+              KEYBOARD: [W/A/S/D] Move 3D • [Space] Jump • [F] Dash
             </div>
           </div>
         </div>
@@ -385,7 +419,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
 
       {/* FOOTER STATUS */}
       <div className="text-[10px] font-vt text-slate-500">
-        P2P DATA CONNECTION • VOXEL MONSTER RETRO ENGINE
+        P2P CO-OP DATA CONNECTION • VOXEL MONSTER RETRO ENGINE
       </div>
     </div>
   );
