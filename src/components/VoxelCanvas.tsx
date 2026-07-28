@@ -585,8 +585,14 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         (scene.fog as THREE.FogExp2).color = activeBgColor;
       }
 
-      gridHelper.color1.copy(activeGrid1Color);
-      gridHelper.color2.copy(activeGrid2Color);
+      const gridColors = gridHelper.geometry.attributes.color;
+      if (gridColors) {
+        for (let i = 0; i < gridColors.count; i++) {
+          const c = i < 4 ? activeGrid1Color : activeGrid2Color;
+          gridColors.setXYZ(i, c.r, c.g, c.b);
+        }
+        gridColors.needsUpdate = true;
+      }
 
       pillarGlowMeshes.forEach((gm) => {
         (gm.material as THREE.MeshBasicMaterial).color.copy(activePillarGlow);
