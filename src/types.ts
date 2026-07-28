@@ -80,6 +80,7 @@ export interface FarmCropTile {
   stage: 0 | 1 | 2; // 0 = sprout, 1 = growing, 2 = mature fruit
   growthProgress: number; // 0 to 100
   harvestable: boolean;
+  owner: 'P1' | 'P2';
 }
 
 export interface CollectibleItem {
