@@ -19,10 +19,11 @@ import {
   Radio,
   Gamepad2,
   ChevronLeft,
-  Sparkles,
-  Compass,
   Gem,
   Wind,
+  Coins,
+  Sprout,
+  Hand,
 } from 'lucide-react';
 
 interface CastViewProps {
@@ -176,7 +177,15 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
       ? syncedState.p1
       : null;
 
+  const myNearbyContext =
+    syncedState && assignedSlot === 'P2'
+      ? syncedState.p2NearbyContext
+      : syncedState
+      ? syncedState.p1NearbyContext
+      : '';
+
   const isP2 = assignedSlot === 'P2';
+  const isFarmMode = syncedState?.gameMode === 'farm';
 
   return (
     <div className="flex flex-col items-center justify-between w-full h-screen p-3 md:p-6 bg-slate-950 text-slate-100 max-w-2xl mx-auto select-none">
@@ -193,7 +202,9 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
           <div className={`text-[10px] font-pixel ${isP2 ? 'text-cyan-400' : 'text-amber-400'}`}>
             {assignedSlot ? `${assignedSlot} CO-OP REMOTE` : 'CAST REMOTE'}
           </div>
-          <div className="text-xs font-vt text-slate-400">3D VOXEL EXPLORER CONTROLLER</div>
+          <div className="text-xs font-vt text-slate-400">
+            {isFarmMode ? '🌾 FARM SIMULATOR TOUCH CONTROLLER' : '🏆 ARENA EXPLORER TOUCH CONTROLLER'}
+          </div>
         </div>
 
         <button onClick={toggleSound} className="retro-btn p-1.5 text-amber-300">
@@ -257,28 +268,54 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 SLOT: {assignedSlot} ({myState ? myState.monsterType.toUpperCase().replace('_', ' ') : 'MONSTER'})
               </span>
               <span className="text-emerald-400 font-pixel">
-                TEAM SCORE: {syncedState?.teamScore ?? 0}
+                {isFarmMode ? `VAULT: ${syncedState?.teamGold ?? 0} GOLD` : `TEAM SCORE: ${syncedState?.teamScore ?? 0}`}
               </span>
             </div>
 
-            {/* MY STATS & BIOME */}
+            {/* MY STATS & STATUS */}
             <div className="grid grid-cols-2 gap-2 text-xs font-pixel bg-slate-950 p-2 rounded border border-slate-800">
-              <div className="text-amber-300 flex items-center gap-1">
-                <Gem className="w-3.5 h-3.5 text-amber-400" />
-                MY PTS: {myState?.score ?? 0}
-              </div>
-              <div className="text-cyan-300 flex items-center gap-1 justify-end">
-                <Compass className="w-3.5 h-3.5 text-cyan-400" />
-                {syncedState?.biomeName ?? 'CYBER GRID'}
-              </div>
+              {!isFarmMode ? (
+                <>
+                  <div className="text-amber-300 flex items-center gap-1">
+                    <Gem className="w-3.5 h-3.5 text-amber-400" />
+                    MY PTS: {myState?.score ?? 0}
+                  </div>
+                  <div className="text-cyan-300 flex items-center gap-1 justify-end">
+                    BIOME: {syncedState?.biomeName ?? 'CYBER GRID'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-amber-300 flex items-center gap-1">
+                    <Coins className="w-3.5 h-3.5 text-amber-400" />
+                    MY GOLD: {myState?.gold ?? 0}
+                  </div>
+                  <div className="text-emerald-300 flex items-center gap-1 justify-end">
+                    <Sprout className="w-3.5 h-3.5 text-emerald-400" />
+                    {myState?.holdingFruit
+                      ? `FRUIT: ${myState.holdingFruit.toUpperCase()}`
+                      : myState?.holdingSeed
+                      ? `SEED: ${myState.holdingSeed.toUpperCase()}`
+                      : 'EMPTY HANDS'}
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* ACTION LOG FEEDBACK */}
-            <div className="bg-slate-950/80 p-2 rounded border border-slate-800 text-center">
-              <div className="text-xs font-pixel text-amber-300 tracking-wide animate-pulse">
-                {myState?.actionText || syncedState?.announcement || 'EXPLORE THE 3D ARENA!'}
+            {/* CONTEXT ACTION BADGE */}
+            {myNearbyContext ? (
+              <div className="bg-emerald-950/90 p-2 rounded border border-emerald-400 text-center animate-bounce">
+                <span className="text-xs font-pixel text-emerald-300 flex items-center justify-center gap-1.5">
+                  <Hand className="w-4 h-4 text-emerald-400" /> {myNearbyContext} (PRESS ACTION/B)
+                </span>
               </div>
-            </div>
+            ) : (
+              <div className="bg-slate-950/80 p-2 rounded border border-slate-800 text-center">
+                <div className="text-xs font-pixel text-amber-300 tracking-wide animate-pulse">
+                  {myState?.actionText || syncedState?.announcement || 'EXPLORE THE 3D ARENA!'}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* TOUCH GAMEPAD WITH 3D D-PAD */}
@@ -380,9 +417,9 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 </div>
               </div>
 
-              {/* ACTION BUTTONS (JUMP, DASH) */}
+              {/* ACTION BUTTONS (JUMP, DASH / ACTION) */}
               <div className="flex items-center gap-3">
-                {/* JUMP */}
+                {/* JUMP / A */}
                 <button
                   onMouseDown={handleJumpPress}
                   onTouchStart={(e) => {
@@ -395,7 +432,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                   <span className="text-[8px] font-pixel text-amber-950">JUMP</span>
                 </button>
 
-                {/* DASH */}
+                {/* DASH / ACTION / B */}
                 <button
                   onMouseDown={handleDashPress}
                   onTouchStart={(e) => {
@@ -405,13 +442,15 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                   className="w-16 h-16 sm:w-18 sm:h-18 rounded-full retro-btn-red flex flex-col items-center justify-center active:scale-95 shadow-lg border-2 border-rose-300"
                 >
                   <Wind className="w-6 h-6 text-white" />
-                  <span className="text-[8px] font-pixel text-white">DASH</span>
+                  <span className="text-[8px] font-pixel text-white">
+                    {isFarmMode ? 'ACTION' : 'DASH'}
+                  </span>
                 </button>
               </div>
             </div>
 
             <div className="text-[9px] font-vt text-slate-400 bg-slate-950/90 px-3 py-1 rounded-full border border-slate-800">
-              KEYBOARD: [W/A/S/D] Move 3D • [Space] Jump • [F] Dash
+              KEYBOARD: [W/A/S/D] Move 3D • [Space] Jump • [F] Action
             </div>
           </div>
         </div>

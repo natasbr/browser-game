@@ -6,10 +6,21 @@ import {
   StageTheme,
   GameStatePayload,
   CollectibleItem,
+  GameMode,
+  CropType,
+  FarmCropTile,
 } from '../types';
 import { sound } from '../lib/sound';
+import { getMonsterVariant } from '../lib/monsters';
+import {
+  loadExplorerState,
+  saveExplorerState,
+  loadFarmState,
+  saveFarmState,
+} from '../lib/storage';
 
 interface VoxelCanvasProps {
+  gameMode?: GameMode;
   p1Input: PlayerInputState;
   p2Input: PlayerInputState;
   p1MonsterType?: MonsterType;
@@ -81,6 +92,7 @@ const THEME_ORDER: StageTheme[] = [
 ];
 
 export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
+  gameMode = 'explorer',
   p1Input,
   p2Input,
   p1MonsterType = 'blaze_dino',
@@ -89,6 +101,9 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
   onGameStateUpdate,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+
+  const gameModeRef = useRef<GameMode>(gameMode);
+  gameModeRef.current = gameMode;
 
   const p1InputRef = useRef<PlayerInputState>(p1Input);
   p1InputRef.current = p1Input;
@@ -119,7 +134,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     scene.fog = new THREE.FogExp2(activeBgColor.getHex(), initialBiome.fogDensity);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 7.5, 12);
+    camera.position.set(0, 8.5, 14);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -131,17 +146,17 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     mountRef.current.appendChild(renderer.domElement);
 
     // --- LIGHTS ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
     dirLight.position.set(6, 14, 8);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 512;
     dirLight.shadow.mapSize.height = 512;
     scene.add(dirLight);
 
-    // --- ARENA STAGE (3D EXPANDED GRID) ---
+    // --- ARENA / FARM STAGE GROUP ---
     const stageGroup = new THREE.Group();
     scene.add(stageGroup);
 
@@ -166,13 +181,15 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     gridHelper.position.y = 0.01;
     stageGroup.add(gridHelper);
 
-    // Pillars & Deco Meshes
+    // Pillars for Explorer Mode
     const pillarGeo = new THREE.BoxGeometry(0.8, 5, 0.8);
     const pillarMat = new THREE.MeshLambertMaterial({ color: 0x2d2f45 });
     const topGlowMat = new THREE.MeshBasicMaterial({ color: activePillarGlow });
 
-    const pillarGlowMeshes: THREE.Mesh[] = [];
+    const pillarGroup = new THREE.Group();
+    stageGroup.add(pillarGroup);
 
+    const pillarGlowMeshes: THREE.Mesh[] = [];
     const pillarPositions = [
       [-12, -12], [12, -12], [-12, 12], [12, 12],
       [-12, 0], [12, 0], [0, -12], [0, 12],
@@ -182,15 +199,18 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       const pillar = new THREE.Mesh(pillarGeo, pillarMat);
       pillar.position.set(px, 2.5, pz);
       pillar.castShadow = true;
-      stageGroup.add(pillar);
+      pillarGroup.add(pillar);
 
       const glowMesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), topGlowMat);
       glowMesh.position.set(px, 5.1, pz);
-      stageGroup.add(glowMesh);
+      pillarGroup.add(glowMesh);
       pillarGlowMeshes.push(glowMesh);
     });
 
-    // --- VOXEL MONSTER MESH BUILDER ---
+    // --- FARM SIMULATOR STRUCTURES (HOUSES, SEED BUCKET, SHOP, SOIL PLOT) ---
+    const farmGroup = new THREE.Group();
+    stageGroup.add(farmGroup);
+
     const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
     function createVoxelBox(
@@ -213,37 +233,57 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       return mesh;
     }
 
-    function buildMonsterMesh(mType: MonsterType) {
+    // Build P1 Voxel House (x = -8, z = -8)
+    const p1House = new THREE.Group();
+    p1House.position.set(-8, 0, -8);
+    farmGroup.add(p1House);
+    createVoxelBox(3.5, 2.5, 3.5, 0xb45309, 0, 1.25, 0, p1House); // Base
+    createVoxelBox(4.0, 1.0, 4.0, 0xd97706, 0, 3.0, 0, p1House); // Roof
+    createVoxelBox(1.0, 1.6, 0.1, 0x78350f, 0, 0.8, 1.76, p1House); // Door
+    createVoxelBox(0.8, 0.8, 0.1, 0x38bdf8, 1.0, 1.4, 1.76, p1House); // Window
+
+    // Build P2 Voxel House (x = 8, z = -8)
+    const p2House = new THREE.Group();
+    p2House.position.set(8, 0, -8);
+    farmGroup.add(p2House);
+    createVoxelBox(3.5, 2.5, 3.5, 0x0284c7, 0, 1.25, 0, p2House); // Base
+    createVoxelBox(4.0, 1.0, 4.0, 0x0369a1, 0, 3.0, 0, p2House); // Roof
+    createVoxelBox(1.0, 1.6, 0.1, 0x0c4a6e, 0, 0.8, 1.76, p2House); // Door
+    createVoxelBox(0.8, 0.8, 0.1, 0xfef08a, -1.0, 1.4, 1.76, p2House); // Window
+
+    // Build Seed Bucket Station (x = -2, z = -2)
+    const seedBucketGroup = new THREE.Group();
+    seedBucketGroup.position.set(-2, 0, -2);
+    farmGroup.add(seedBucketGroup);
+    createVoxelBox(1.2, 0.8, 1.2, 0x475569, 0, 0.4, 0, seedBucketGroup); // Bucket
+    createVoxelBox(0.9, 0.1, 0.9, 0x15803d, 0, 0.8, 0, seedBucketGroup); // Seeds inside
+    createVoxelBox(0.2, 1.2, 0.2, 0xf59e0b, 0, 1.4, 0, seedBucketGroup); // Signpost
+
+    // Build Voxel Shop Stall (x = 0, z = -10)
+    const shopGroup = new THREE.Group();
+    shopGroup.position.set(0, 0, -10);
+    farmGroup.add(shopGroup);
+    createVoxelBox(4.5, 1.2, 1.8, 0x15803d, 0, 0.6, 0, shopGroup); // Counter
+    createVoxelBox(0.4, 3.0, 0.4, 0x78350f, -2.0, 1.5, 0, shopGroup); // Pillar left
+    createVoxelBox(0.4, 3.0, 0.4, 0x78350f, 2.0, 1.5, 0, shopGroup); // Pillar right
+    createVoxelBox(5.0, 0.6, 2.2, 0xeab308, 0, 3.2, 0, shopGroup); // Canopy
+
+    // Tilled Soil Patch (x = -6 to 6, z = 0 to 8)
+    const soilMesh = createVoxelBox(12, 0.1, 8, 0x451a03, 0, 0.05, 4, farmGroup);
+    soilMesh.receiveShadow = true;
+
+    // --- VOXEL MONSTER MESH BUILDER (DYNAMIC FROM MONSTER_VARIANTS) ---
+    function buildMonsterMesh(mType: MonsterType | string) {
+      const variant = getMonsterVariant(mType as MonsterType);
+
       const monsterGroup = new THREE.Group();
       const bodyGroup = new THREE.Group();
       monsterGroup.add(bodyGroup);
 
-      let primary = 0xef4444; // Blaze Dino
-      let belly = 0xfef08a;
-      let eyes = 0x22c55e;
-      let horns = 0xd97706;
-
-      if (mType === 'frost_wolf') {
-        primary = 0x06b6d4;
-        belly = 0xe0f2fe;
-        eyes = 0x3b82f6;
-        horns = 0x0284c7;
-      } else if (mType === 'volt_dragon') {
-        primary = 0xeab308;
-        belly = 0xfef08a;
-        eyes = 0xef4444;
-        horns = 0xca8a04;
-      } else if (mType === 'terra_golem') {
-        primary = 0x10b981;
-        belly = 0x064e3b;
-        eyes = 0xf59e0b;
-        horns = 0x334155;
-      } else if (mType === 'shadow_beast') {
-        primary = 0x8b5cf6;
-        belly = 0x3b0764;
-        eyes = 0xef4444;
-        horns = 0x4c1d95;
-      }
+      const primary = variant.primaryColor;
+      const belly = variant.bellyColor;
+      const eyes = variant.eyeColor;
+      const horns = variant.hornColor;
 
       // Torso
       createVoxelBox(0.9, 0.9, 0.8, primary, 0, 0.9, 0, bodyGroup);
@@ -264,7 +304,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       createVoxelBox(0.08, 0.12, 0.11, 0x000000, 0.34, 0.28, 0.47, headGroup);
       createVoxelBox(0.08, 0.12, 0.11, 0x000000, -0.34, 0.28, 0.47, headGroup);
 
-      // Horns
+      // Horns / Crown
       createVoxelBox(0.2, 0.35, 0.2, horns, 0, 0.75, -0.2, headGroup);
       createVoxelBox(0.15, 0.25, 0.15, horns, 0.25, 0.65, -0.2, headGroup);
       createVoxelBox(0.15, 0.25, 0.15, horns, -0.25, 0.65, -0.2, headGroup);
@@ -291,11 +331,10 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       bodyGroup.add(rightLeg);
       createVoxelBox(0.32, 0.5, 0.35, primary, 0, -0.15, 0, rightLeg);
 
-      // Tail
-      const tail = new THREE.Group();
-      tail.position.set(0, 0.6, -0.4);
-      bodyGroup.add(tail);
-      createVoxelBox(0.3, 0.3, 0.6, primary, 0, 0, -0.25, tail);
+      // Held Item Mesh Anchor
+      const itemAnchor = new THREE.Group();
+      itemAnchor.position.set(0, 1.8, 0.4);
+      monsterGroup.add(itemAnchor);
 
       return {
         monsterGroup,
@@ -305,6 +344,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         rightArm,
         leftLeg,
         rightLeg,
+        itemAnchor,
       };
     }
 
@@ -313,10 +353,46 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     scene.add(p1Mesh.monsterGroup);
     scene.add(p2Mesh.monsterGroup);
 
-    // --- CO-OP COLLECTIBLES (GEMS, STARS, CHESTS) ---
-    const collectibleMeshes: Map<string, THREE.Group> = new Map();
+    // Held Item Meshes for P1 and P2
+    let p1HeldMesh: THREE.Object3D | null = null;
+    let p2HeldMesh: THREE.Object3D | null = null;
 
-    const initialItems: CollectibleItem[] = [
+    function updateHeldMesh(
+      playerMesh: ReturnType<typeof buildMonsterMesh>,
+      currentHeldRef: THREE.Object3D | null,
+      seed: CropType | null,
+      fruit: CropType | null
+    ): THREE.Object3D | null {
+      if (currentHeldRef) {
+        playerMesh.itemAnchor.remove(currentHeldRef);
+      }
+
+      if (fruit) {
+        const fruitColors: Record<CropType, number> = {
+          carrot: 0xf97316,
+          pumpkin: 0xeab308,
+          berry: 0xa855f7,
+          melon: 0x22c55e,
+        };
+        const mat = new THREE.MeshLambertMaterial({ color: fruitColors[fruit] || 0xef4444 });
+        const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3), mat);
+        playerMesh.itemAnchor.add(mesh);
+        return mesh;
+      } else if (seed) {
+        const mat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6), mat);
+        playerMesh.itemAnchor.add(mesh);
+        return mesh;
+      }
+
+      return null;
+    }
+
+    // --- EXPLORER COLLECTIBLES ---
+    const collectibleMeshes: Map<string, THREE.Group> = new Map();
+    const loadedExplorer = loadExplorerState();
+
+    const initialItems: CollectibleItem[] = loadedExplorer?.collectibles || [
       { id: '1', x: -4, y: 0.6, z: -3, type: 'gem', points: 100, active: true, color: '#38bdf8' },
       { id: '2', x: 4, y: 0.6, z: -3, type: 'gem', points: 100, active: true, color: '#f43f5e' },
       { id: '3', x: 0, y: 0.6, z: 4, type: 'star', points: 250, active: true, color: '#eab308' },
@@ -330,7 +406,6 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       group.position.set(item.x, item.y, item.z);
 
       if (item.type === 'chest') {
-        // Treasure Chest
         const baseMat = new THREE.MeshLambertMaterial({ color: 0xb45309 });
         const trimMat = new THREE.MeshLambertMaterial({ color: 0xfef08a });
 
@@ -351,7 +426,6 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         relic.castShadow = true;
         group.add(relic);
       } else {
-        // Standard Gem
         const mat = new THREE.MeshLambertMaterial({ color: item.color });
         const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), mat);
         gem.castShadow = true;
@@ -366,15 +440,82 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       collectibleMeshes.set(item.id, createItemMesh(item));
     });
 
-    // Floating Score Sparkle Effects
-    const sparkleGroup = new THREE.Group();
-    scene.add(sparkleGroup);
+    // --- FARM SIMULATOR CROPS (VOXEL CROP TILES) ---
+    const cropMeshes: Map<string, THREE.Group> = new Map();
+    const loadedFarm = loadFarmState();
 
-    // --- GAME ENGINE STATE ---
+    let farmCropsList: FarmCropTile[] = loadedFarm?.crops || [];
+
+    function updateOrCreateCropMesh(crop: FarmCropTile): THREE.Group {
+      let group = cropMeshes.get(crop.id);
+      if (!group) {
+        group = new THREE.Group();
+        group.position.set(crop.x, 0.1, crop.z);
+        scene.add(group);
+        cropMeshes.set(crop.id, group);
+      }
+
+      // Clear old children
+      while (group.children.length > 0) {
+        group.remove(group.children[0]);
+      }
+
+      if (crop.stage === 0) {
+        // Sprout
+        const mat = new THREE.MeshBasicMaterial({ color: 0x84cc16 });
+        const sprout = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.2), mat);
+        sprout.position.y = 0.15;
+        group.add(sprout);
+      } else if (crop.stage === 1) {
+        // Growing Stem
+        const mat = new THREE.MeshLambertMaterial({ color: 0x22c55e });
+        const stem = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), mat);
+        stem.position.y = 0.3;
+        group.add(stem);
+      } else {
+        // Mature Fruit!
+        const fruitColors: Record<CropType, number> = {
+          carrot: 0xf97316,
+          pumpkin: 0xeab308,
+          berry: 0xa855f7,
+          melon: 0x22c55e,
+        };
+        const mat = new THREE.MeshLambertMaterial({ color: fruitColors[crop.cropType] });
+        const fruit = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), mat);
+        fruit.position.y = 0.4;
+        fruit.castShadow = true;
+        group.add(fruit);
+      }
+
+      return group;
+    }
+
+    farmCropsList.forEach((c) => updateOrCreateCropMesh(c));
+
+    // --- RESTORE STATES OR INITIALIZE ---
+    let p1ExplorerPos = loadedExplorer?.p1Pos || { x: -2.5, y: 0, z: 2.0 };
+    let p2ExplorerPos = loadedExplorer?.p2Pos || { x: 2.5, y: 0, z: 2.0 };
+    let p1ExplorerScore = loadedExplorer?.p1Score || 0;
+    let p2ExplorerScore = loadedExplorer?.p2Score || 0;
+    let p1GemsCollected = loadedExplorer?.p1Gems || 0;
+    let p2GemsCollected = loadedExplorer?.p2Gems || 0;
+    let explorerTeamTotalScore = loadedExplorer?.teamScore || 0;
+    let totalDistanceExplored = loadedExplorer?.distanceExplored || 0;
+
+    let p1FarmPos = loadedFarm?.p1Pos || { x: -3.0, y: 0, z: 0.0 };
+    let p2FarmPos = loadedFarm?.p2Pos || { x: 3.0, y: 0, z: 0.0 };
+    let p1FarmGold = loadedFarm?.p1Gold || 50;
+    let p2FarmGold = loadedFarm?.p2Gold || 50;
+    let farmTeamGold = loadedFarm?.teamGold || 100;
+    let p1HeldSeed: CropType | null = (loadedFarm?.p1Seed as CropType) || null;
+    let p2HeldSeed: CropType | null = (loadedFarm?.p2Seed as CropType) || null;
+    let p1HeldFruit: CropType | null = (loadedFarm?.p1Fruit as CropType) || null;
+    let p2HeldFruit: CropType | null = (loadedFarm?.p2Fruit as CropType) || null;
+
     let p1State = {
-      x: -2.5,
-      y: 0,
-      z: 2.0,
+      x: p1ExplorerPos.x,
+      y: p1ExplorerPos.y,
+      z: p1ExplorerPos.z,
       vx: 0,
       vy: 0,
       vz: 0,
@@ -382,15 +523,13 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       isGrounded: true,
       isDashing: false,
       dashTimer: 0,
-      score: 0,
-      gemsCollected: 0,
       actionText: 'CO-OP READY!',
     };
 
     let p2State = {
-      x: 2.5,
-      y: 0,
-      z: 2.0,
+      x: p2ExplorerPos.x,
+      y: p2ExplorerPos.y,
+      z: p2ExplorerPos.z,
       vx: 0,
       vy: 0,
       vz: 0,
@@ -398,18 +537,13 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       isGrounded: true,
       isDashing: false,
       dashTimer: 0,
-      score: 0,
-      gemsCollected: 0,
       actionText: 'CO-OP READY!',
     };
 
-    let teamTotalScore = 0;
-    let totalDistanceExplored = 0;
-    let activeBiomeIndex = 0;
-    let announcementText = 'EXPLORE & COLLECT CO-OP GEMS!';
+    let announcementText = 'EXPLORE & FARM IN CO-OP 3D!';
 
-    let prevP1Input = { jump: false, dash: false };
-    let prevP2Input = { jump: false, dash: false };
+    let prevP1Input = { jump: false, dash: false, action: false };
+    let prevP2Input = { jump: false, dash: false, action: false };
 
     // --- ANIMATION & PHYSICS LOOP ---
     let animId: number;
@@ -420,10 +554,21 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
 
       const dt = Math.min(clock.getDelta(), 0.1);
       const time = clock.getElapsedTime();
+      const currentMode = gameModeRef.current;
+
+      // Toggle Visibility between Explorer Pillars and Farm Buildings
+      pillarGroup.visible = currentMode === 'explorer';
+      farmGroup.visible = currentMode === 'farm';
+      collectibleMeshes.forEach((m) => {
+        m.visible = currentMode === 'explorer';
+      });
+      cropMeshes.forEach((m) => {
+        m.visible = currentMode === 'farm';
+      });
 
       const speed = 5.2;
 
-      // 1. UPDATE PLAYER 1 (X & Z AXIS MOVEMENT)
+      // 1. UPDATE PLAYER 1 (X & Z MOVEMENT)
       const in1 = p1InputRef.current;
       let p1MoveX = 0;
       let p1MoveZ = 0;
@@ -433,7 +578,6 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       if (in1.up) p1MoveZ -= 1;
       if (in1.down) p1MoveZ += 1;
 
-      // Normalize diagonal speed
       if (p1MoveX !== 0 && p1MoveZ !== 0) {
         p1MoveX *= 0.7071;
         p1MoveZ *= 0.7071;
@@ -468,7 +612,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         if (p1State.dashTimer <= 0) p1State.isDashing = false;
       }
 
-      // Jump (Y)
+      // Jump
       if (in1.jump && !prevP1Input.jump && p1State.isGrounded) {
         p1State.vy = 7.0;
         p1State.isGrounded = false;
@@ -492,7 +636,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       p1State.x = Math.max(-13, Math.min(13, p1State.x));
       p1State.z = Math.max(-13, Math.min(13, p1State.z));
 
-      // 2. UPDATE PLAYER 2 (X & Z AXIS MOVEMENT)
+      // 2. UPDATE PLAYER 2 (X & Z MOVEMENT)
       const in2 = p2InputRef.current;
       let p2MoveX = 0;
       let p2MoveZ = 0;
@@ -560,21 +704,24 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       p2State.x = Math.max(-13, Math.min(13, p2State.x));
       p2State.z = Math.max(-13, Math.min(13, p2State.z));
 
-      // 3. DISTANCE EXPLORED & GRADUAL DYNAMIC THEME SHIFT
-      const moveDistThisFrame =
-        Math.hypot(p1State.vx, p1State.vz) * dt + Math.hypot(p2State.vx, p2State.vz) * dt;
+      // 3. EXPLORER BIOME & SHIFTING LOGIC
+      let targetBiomeTheme = forcedThemeRef.current;
+      if (currentMode === 'explorer') {
+        const moveDistThisFrame =
+          Math.hypot(p1State.vx, p1State.vz) * dt + Math.hypot(p2State.vx, p2State.vz) * dt;
 
-      totalDistanceExplored += moveDistThisFrame;
+        totalDistanceExplored += moveDistThisFrame;
 
-      // Determine target biome from distance or dropdown override
-      const targetBiomeTheme =
-        forcedThemeRef.current !== 'cyber_grid'
-          ? forcedThemeRef.current
-          : THEME_ORDER[Math.floor(totalDistanceExplored / 45) % THEME_ORDER.length];
+        targetBiomeTheme =
+          forcedThemeRef.current !== 'cyber_grid'
+            ? forcedThemeRef.current
+            : THEME_ORDER[Math.floor(totalDistanceExplored / 45) % THEME_ORDER.length];
+      } else {
+        targetBiomeTheme = 'verdant_forest';
+      }
 
       const targetBiome = BIOMES[targetBiomeTheme];
 
-      // Smooth lerp scene colors to naturally shift theme
       activeBgColor.lerp(targetBiome.bgColor, 0.03);
       activeGrid1Color.lerp(targetBiome.grid1Color, 0.03);
       activeGrid2Color.lerp(targetBiome.grid2Color, 0.03);
@@ -598,91 +745,301 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         (gm.material as THREE.MeshBasicMaterial).color.copy(activePillarGlow);
       });
 
-      // 4. CO-OP ITEM PICKUP & DOUBLE COMBO DETECTION
-      initialItems.forEach((item) => {
-        if (!item.active) return;
+      // 4. MODE SPECIFIC GAMEPLAY LOGIC
+      let p1NearbyContext = '';
+      let p2NearbyContext = '';
 
-        const meshGroup = collectibleMeshes.get(item.id);
-        if (meshGroup) {
-          meshGroup.rotation.y += dt * 2.5;
-          meshGroup.position.y = item.y + Math.sin(time * 3 + Number(item.id)) * 0.15;
-        }
+      if (currentMode === 'explorer') {
+        // Collectibles in Explorer Mode
+        initialItems.forEach((item) => {
+          if (!item.active) return;
 
-        const d1 = Math.hypot(p1State.x - item.x, p1State.z - item.z);
-        const d2 = Math.hypot(p2State.x - item.x, p2State.z - item.z);
-        const playerDist = Math.hypot(p1State.x - p2State.x, p1State.z - p2State.z);
+          const meshGroup = collectibleMeshes.get(item.id);
+          if (meshGroup) {
+            meshGroup.rotation.y += dt * 2.5;
+            meshGroup.position.y = item.y + Math.sin(time * 3 + Number(item.id)) * 0.15;
+          }
 
-        // CO-OP DOUBLE TEAM BONUS (both players near chest/relic)
-        if (d1 < 1.8 && d2 < 1.8 && (item.type === 'chest' || item.type === 'relic')) {
-          item.active = false;
-          if (meshGroup) meshGroup.visible = false;
+          const d1 = Math.hypot(p1State.x - item.x, p1State.z - item.z);
+          const d2 = Math.hypot(p2State.x - item.x, p2State.z - item.z);
 
-          const bonus = item.points * 2 + 300;
-          teamTotalScore += bonus;
-          p1State.score += bonus / 2;
-          p2State.score += bonus / 2;
-          p1State.gemsCollected += 1;
-          p2State.gemsCollected += 1;
+          // Double Team Bonus
+          if (d1 < 1.8 && d2 < 1.8 && (item.type === 'chest' || item.type === 'relic')) {
+            item.active = false;
+            if (meshGroup) meshGroup.visible = false;
 
-          announcementText = `🌟 CO-OP DOUBLE TEAM BONUS! +${bonus} PTS!`;
-          p1State.actionText = 'CO-OP TEAM BONUS!';
-          p2State.actionText = 'CO-OP TEAM BONUS!';
-          sound.playChestOpen();
+            const bonus = item.points * 2 + 300;
+            explorerTeamTotalScore += bonus;
+            p1ExplorerScore += bonus / 2;
+            p2ExplorerScore += bonus / 2;
+            p1GemsCollected += 1;
+            p2GemsCollected += 1;
 
-          // Respawn item
-          setTimeout(() => {
-            item.x = (Math.random() - 0.5) * 20;
-            item.z = (Math.random() - 0.5) * 20;
-            item.active = true;
-            if (meshGroup) {
-              meshGroup.position.set(item.x, item.y, item.z);
-              meshGroup.visible = true;
+            announcementText = `🌟 CO-OP DOUBLE TEAM BONUS! +${bonus} PTS!`;
+            p1State.actionText = 'CO-OP TEAM BONUS!';
+            p2State.actionText = 'CO-OP TEAM BONUS!';
+            sound.playChestOpen();
+
+            setTimeout(() => {
+              item.x = (Math.random() - 0.5) * 20;
+              item.z = (Math.random() - 0.5) * 20;
+              item.active = true;
+              if (meshGroup) {
+                meshGroup.position.set(item.x, item.y, item.z);
+                meshGroup.visible = true;
+              }
+            }, 6000);
+          } else if (d1 < 1.2 && p1State.y < 1.5) {
+            item.active = false;
+            if (meshGroup) meshGroup.visible = false;
+
+            explorerTeamTotalScore += item.points;
+            p1ExplorerScore += item.points;
+            p1GemsCollected += 1;
+            p1State.actionText = `P1 GETS ${item.type.toUpperCase()} (+${item.points})`;
+            sound.playGemCollect();
+
+            setTimeout(() => {
+              item.x = (Math.random() - 0.5) * 20;
+              item.z = (Math.random() - 0.5) * 20;
+              item.active = true;
+              if (meshGroup) {
+                meshGroup.position.set(item.x, item.y, item.z);
+                meshGroup.visible = true;
+              }
+            }, 5000);
+          } else if (d2 < 1.2 && p2State.y < 1.5) {
+            item.active = false;
+            if (meshGroup) meshGroup.visible = false;
+
+            explorerTeamTotalScore += item.points;
+            p2ExplorerScore += item.points;
+            p2GemsCollected += 1;
+            p2State.actionText = `P2 GETS ${item.type.toUpperCase()} (+${item.points})`;
+            sound.playGemCollect();
+
+            setTimeout(() => {
+              item.x = (Math.random() - 0.5) * 20;
+              item.z = (Math.random() - 0.5) * 20;
+              item.active = true;
+              if (meshGroup) {
+                meshGroup.position.set(item.x, item.y, item.z);
+                meshGroup.visible = true;
+              }
+            }, 5000);
+          }
+        });
+
+        // Save Explorer State
+        saveExplorerState({
+          p1Pos: { x: p1State.x, y: p1State.y, z: p1State.z },
+          p2Pos: { x: p2State.x, y: p2State.y, z: p2State.z },
+          p1Score: p1ExplorerScore,
+          p2Score: p2ExplorerScore,
+          p1Gems: p1GemsCollected,
+          p2Gems: p2GemsCollected,
+          teamScore: explorerTeamTotalScore,
+          stageTheme: targetBiomeTheme,
+          distanceExplored: Math.round(totalDistanceExplored),
+          collectibles: initialItems,
+        });
+      } else if (currentMode === 'farm') {
+        // --- FARM SIMULATOR LOGIC ---
+        // Growth progression of crops
+        farmCropsList.forEach((crop) => {
+          if (crop.stage < 2) {
+            crop.growthProgress += dt * 15; // grows over ~6 seconds
+            if (crop.growthProgress >= 50 && crop.stage === 0) {
+              crop.stage = 1;
+              updateOrCreateCropMesh(crop);
+            } else if (crop.growthProgress >= 100 && crop.stage === 1) {
+              crop.stage = 2;
+              crop.harvestable = true;
+              updateOrCreateCropMesh(crop);
+              sound.playGemCollect();
             }
-          }, 6000);
+          }
+        });
+
+        const cropsTypes: CropType[] = ['carrot', 'pumpkin', 'berry', 'melon'];
+
+        // Distance to Seed Bucket (x = -2, z = -2)
+        const p1DistBucket = Math.hypot(p1State.x - (-2), p1State.z - (-2));
+        const p2DistBucket = Math.hypot(p2State.x - (-2), p2State.z - (-2));
+
+        if (p1DistBucket < 2.0) {
+          p1NearbyContext = 'GRAB SEED 🌰';
+          if ((in1.dash || in1.interact) && !prevP1Input.action) {
+            const nextSeed = cropsTypes[Math.floor(Math.random() * cropsTypes.length)];
+            p1HeldSeed = nextSeed;
+            p1HeldFruit = null;
+            sound.playBeep(450, 0.08);
+            p1State.actionText = `P1 PICKED ${nextSeed.toUpperCase()} SEED!`;
+          }
         }
-        // Individual P1 pickup
-        else if (d1 < 1.2 && p1State.y < 1.5) {
-          item.active = false;
-          if (meshGroup) meshGroup.visible = false;
 
-          teamTotalScore += item.points;
-          p1State.score += item.points;
-          p1State.gemsCollected += 1;
-          p1State.actionText = `P1 GETS ${item.type.toUpperCase()} (+${item.points})`;
-          sound.playGemCollect();
+        if (p2DistBucket < 2.0) {
+          p2NearbyContext = 'GRAB SEED 🌰';
+          if ((in2.dash || in2.interact) && !prevP2Input.action) {
+            const nextSeed = cropsTypes[Math.floor(Math.random() * cropsTypes.length)];
+            p2HeldSeed = nextSeed;
+            p2HeldFruit = null;
+            sound.playBeep(480, 0.08);
+            p2State.actionText = `P2 PICKED ${nextSeed.toUpperCase()} SEED!`;
+          }
+        }
 
-          setTimeout(() => {
-            item.x = (Math.random() - 0.5) * 20;
-            item.z = (Math.random() - 0.5) * 20;
-            item.active = true;
-            if (meshGroup) {
-              meshGroup.position.set(item.x, item.y, item.z);
-              meshGroup.visible = true;
+        // Planting seeds on soil plot (x = -6..6, z = 0..8)
+        const isP1OnSoil = p1State.x >= -6 && p1State.x <= 6 && p1State.z >= 0 && p1State.z <= 8;
+        const isP2OnSoil = p2State.x >= -6 && p2State.x <= 6 && p2State.z >= 0 && p2State.z <= 8;
+
+        if (isP1OnSoil && p1HeldSeed) {
+          p1NearbyContext = 'PLANT SEED 🌱';
+          if ((in1.dash || in1.interact) && !prevP1Input.action) {
+            const cropX = Math.round(p1State.x);
+            const cropZ = Math.round(p1State.z);
+
+            const existing = farmCropsList.find((c) => Math.hypot(c.x - cropX, c.z - cropZ) < 1.0);
+            if (!existing) {
+              const newCrop: FarmCropTile = {
+                id: `crop_${Date.now()}_${Math.random()}`,
+                x: cropX,
+                z: cropZ,
+                cropType: p1HeldSeed,
+                stage: 0,
+                growthProgress: 0,
+                harvestable: false,
+              };
+              farmCropsList.push(newCrop);
+              updateOrCreateCropMesh(newCrop);
+              p1State.actionText = `P1 PLANTED ${p1HeldSeed.toUpperCase()}!`;
+              p1HeldSeed = null;
+              sound.playBeep(320, 0.1);
             }
-          }, 5000);
+          }
         }
-        // Individual P2 pickup
-        else if (d2 < 1.2 && p2State.y < 1.5) {
-          item.active = false;
-          if (meshGroup) meshGroup.visible = false;
 
-          teamTotalScore += item.points;
-          p2State.score += item.points;
-          p2State.gemsCollected += 1;
-          p2State.actionText = `P2 GETS ${item.type.toUpperCase()} (+${item.points})`;
-          sound.playGemCollect();
+        if (isP2OnSoil && p2HeldSeed) {
+          p2NearbyContext = 'PLANT SEED 🌱';
+          if ((in2.dash || in2.interact) && !prevP2Input.action) {
+            const cropX = Math.round(p2State.x);
+            const cropZ = Math.round(p2State.z);
 
-          setTimeout(() => {
-            item.x = (Math.random() - 0.5) * 20;
-            item.z = (Math.random() - 0.5) * 20;
-            item.active = true;
-            if (meshGroup) {
-              meshGroup.position.set(item.x, item.y, item.z);
-              meshGroup.visible = true;
+            const existing = farmCropsList.find((c) => Math.hypot(c.x - cropX, c.z - cropZ) < 1.0);
+            if (!existing) {
+              const newCrop: FarmCropTile = {
+                id: `crop_${Date.now()}_${Math.random()}`,
+                x: cropX,
+                z: cropZ,
+                cropType: p2HeldSeed,
+                stage: 0,
+                growthProgress: 0,
+                harvestable: false,
+              };
+              farmCropsList.push(newCrop);
+              updateOrCreateCropMesh(newCrop);
+              p2State.actionText = `P2 PLANTED ${p2HeldSeed.toUpperCase()}!`;
+              p2HeldSeed = null;
+              sound.playBeep(340, 0.1);
             }
-          }, 5000);
+          }
         }
-      });
+
+        // Harvesting mature crops
+        farmCropsList.forEach((crop) => {
+          if (crop.stage === 2 && crop.harvestable) {
+            const d1 = Math.hypot(p1State.x - crop.x, p1State.z - crop.z);
+            const d2 = Math.hypot(p2State.x - crop.x, p2State.z - crop.z);
+
+            if (d1 < 1.4 && !p1HeldFruit) {
+              p1NearbyContext = 'HARVEST FRUIT 🍎';
+              if ((in1.dash || in1.interact) && !prevP1Input.action) {
+                p1HeldFruit = crop.cropType;
+                p1State.actionText = `P1 HARVESTED ${crop.cropType.toUpperCase()}!`;
+                // Remove crop tile
+                farmCropsList = farmCropsList.filter((c) => c.id !== crop.id);
+                const g = cropMeshes.get(crop.id);
+                if (g) {
+                  scene.remove(g);
+                  cropMeshes.delete(crop.id);
+                }
+                sound.playGemCollect();
+              }
+            }
+
+            if (d2 < 1.4 && !p2HeldFruit) {
+              p2NearbyContext = 'HARVEST FRUIT 🍎';
+              if ((in2.dash || in2.interact) && !prevP2Input.action) {
+                p2HeldFruit = crop.cropType;
+                p2State.actionText = `P2 HARVESTED ${crop.cropType.toUpperCase()}!`;
+                farmCropsList = farmCropsList.filter((c) => c.id !== crop.id);
+                const g = cropMeshes.get(crop.id);
+                if (g) {
+                  scene.remove(g);
+                  cropMeshes.delete(crop.id);
+                }
+                sound.playGemCollect();
+              }
+            }
+          }
+        });
+
+        // Selling Fruit at Shop Stall (x = 0, z = -10)
+        const p1DistShop = Math.hypot(p1State.x - 0, p1State.z - (-10));
+        const p2DistShop = Math.hypot(p2State.x - 0, p2State.z - (-10));
+
+        const fruitValues: Record<CropType, number> = {
+          carrot: 60,
+          pumpkin: 120,
+          berry: 80,
+          melon: 150,
+        };
+
+        if (p1DistShop < 2.5 && p1HeldFruit) {
+          p1NearbyContext = 'SELL FRUIT 💰';
+          if ((in1.dash || in1.interact) && !prevP1Input.action) {
+            const goldEarned = fruitValues[p1HeldFruit];
+            p1FarmGold += goldEarned;
+            farmTeamGold += goldEarned;
+            p1State.actionText = `P1 SOLD ${p1HeldFruit.toUpperCase()} FOR +${goldEarned} GOLD!`;
+            p1HeldFruit = null;
+            sound.playChestOpen();
+          }
+        }
+
+        if (p2DistShop < 2.5 && p2HeldFruit) {
+          p2NearbyContext = 'SELL FRUIT 💰';
+          if ((in2.dash || in2.interact) && !prevP2Input.action) {
+            const goldEarned = fruitValues[p2HeldFruit];
+            p2FarmGold += goldEarned;
+            farmTeamGold += goldEarned;
+            p2State.actionText = `P2 SOLD ${p2HeldFruit.toUpperCase()} FOR +${goldEarned} GOLD!`;
+            p2HeldFruit = null;
+            sound.playChestOpen();
+          }
+        }
+
+        prevP1Input.action = Boolean(in1.dash || in1.interact);
+        prevP2Input.action = Boolean(in2.dash || in2.interact);
+
+        // Save Farm State
+        saveFarmState({
+          p1Pos: { x: p1State.x, y: p1State.y, z: p1State.z },
+          p2Pos: { x: p2State.x, y: p2State.y, z: p2State.z },
+          p1Gold: p1FarmGold,
+          p2Gold: p2FarmGold,
+          teamGold: farmTeamGold,
+          p1Seed: p1HeldSeed,
+          p2Seed: p2HeldSeed,
+          p1Fruit: p1HeldFruit,
+          p2Fruit: p2HeldFruit,
+          crops: farmCropsList,
+        });
+      }
+
+      // Update held items in 3D hands
+      p1HeldMesh = updateHeldMesh(p1Mesh, p1HeldMesh, p1HeldSeed, p1HeldFruit);
+      p2HeldMesh = updateHeldMesh(p2Mesh, p2HeldMesh, p2HeldSeed, p2HeldFruit);
 
       // 5. UPDATE MESH POSITIONS & ROTATIONS
       // P1 Mesh
@@ -746,34 +1103,45 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       // Report State to Parent Component
       if (onGameStateUpdate) {
         onGameStateUpdate({
+          gameMode: currentMode,
           p1: {
             x: Math.round(p1State.x * 10) / 10,
             y: Math.round(p1State.y * 10) / 10,
             z: Math.round(p1State.z * 10) / 10,
             facing: p1State.facing,
-            score: p1State.score,
-            gemsCollected: p1State.gemsCollected,
+            score: p1ExplorerScore,
+            gold: p1FarmGold,
+            gemsCollected: p1GemsCollected,
             isDashing: p1State.isDashing,
             monsterType: p1MonsterType,
             actionText: p1State.actionText,
+            holdingSeed: p1HeldSeed,
+            holdingFruit: p1HeldFruit,
           },
           p2: {
             x: Math.round(p2State.x * 10) / 10,
             y: Math.round(p2State.y * 10) / 10,
             z: Math.round(p2State.z * 10) / 10,
             facing: p2State.facing,
-            score: p2State.score,
-            gemsCollected: p2State.gemsCollected,
+            score: p2ExplorerScore,
+            gold: p2FarmGold,
+            gemsCollected: p2GemsCollected,
             isDashing: p2State.isDashing,
             monsterType: p2MonsterType,
             actionText: p2State.actionText,
+            holdingSeed: p2HeldSeed,
+            holdingFruit: p2HeldFruit,
           },
-          teamScore: teamTotalScore,
+          teamScore: explorerTeamTotalScore,
+          teamGold: farmTeamGold,
           stageTheme: targetBiomeTheme,
-          biomeName: targetBiome.name,
+          biomeName: currentMode === 'farm' ? 'Co-Op Farmstead' : targetBiome.name,
           distanceExplored: Math.round(totalDistanceExplored),
           collectibles: initialItems.filter((it) => it.active),
+          crops: farmCropsList,
           announcement: announcementText,
+          p1NearbyContext: p1NearbyContext,
+          p2NearbyContext: p2NearbyContext,
         });
       }
     };

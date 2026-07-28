@@ -3,7 +3,7 @@ import { AppMode } from './types';
 import { HostView } from './components/HostView';
 import { CastView } from './components/CastView';
 import { sound } from './lib/sound';
-import { Tv, Gamepad2, Sparkles, Volume2, VolumeX, ShieldAlert } from 'lucide-react';
+import { Tv, Gamepad2, Sparkles, Volume2, VolumeX, ShieldAlert, Sprout, Trophy } from 'lucide-react';
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>('menu');
@@ -64,10 +64,10 @@ export default function App() {
         {/* GAME LOGO */}
         <div className="retro-box p-6 bg-slate-900/90 border-4 border-amber-500 rounded-xl shadow-2xl glow-gold w-full">
           <h1 className="text-2xl md:text-3xl font-pixel text-amber-400 drop-shadow-[0_4px_0_#78350f] mb-3 leading-snug">
-            VOXEL MONSTERS 3D CO-OP
+            VOXEL MONSTERS 3D
           </h1>
           <div className="text-xs font-vt text-slate-300 bg-slate-950/80 py-1 px-3 rounded border border-amber-500/30 inline-block">
-            3D Z-AXIS MOVEMENT • CO-OP EXPLORER • DYNAMIC BIOMES
+            🏆 EXPLORER ARENA & 🌾 FARM SIMULATOR • 32 MONSTER VARIANTS
           </div>
         </div>
 
@@ -82,9 +82,9 @@ export default function App() {
               <Tv className="w-10 h-10 text-amber-950" />
             </div>
             <div>
-              <div className="text-sm font-pixel text-amber-950 mb-1">HOST</div>
+              <div className="text-sm font-pixel text-amber-950 mb-1">RECEIVE / 1P</div>
               <div className="text-[10px] font-vt text-amber-900">
-                DISPLAY 3D ARENA & CO-OP TEAM SCORES
+                DISPLAY ARENA & PLAY 1P / LOCAL KEYBOARD OR CAST
               </div>
             </div>
           </button>
@@ -98,9 +98,9 @@ export default function App() {
               <Gamepad2 className="w-10 h-10 text-indigo-300" />
             </div>
             <div>
-              <div className="text-sm font-pixel text-cyan-300 mb-1">CAST</div>
+              <div className="text-sm font-pixel text-cyan-300 mb-1">CAST REMOTE</div>
               <div className="text-[10px] font-vt text-slate-300">
-                INPUT PIN & 3D TOUCH CONTROLLER
+                INPUT PIN & 3D TOUCH CONTROLLER ON MOBILE
               </div>
             </div>
           </button>
@@ -109,13 +109,14 @@ export default function App() {
         {/* INSTRUCTION CARD */}
         <div className="retro-box p-4 bg-slate-900/80 text-left w-full text-xs font-vt text-slate-300 flex flex-col gap-2 border-l-4 border-l-emerald-500">
           <div className="font-pixel text-[10px] text-emerald-400 flex items-center gap-1.5">
-            <ShieldAlert className="w-4 h-4 text-emerald-400" /> HOW TO PLAY 3D CO-OP EXPLORER:
+            <ShieldAlert className="w-4 h-4 text-emerald-400" /> HOW TO PLAY & GAME MODES:
           </div>
           <ol className="list-decimal list-inside space-none flex flex-col gap-1 text-slate-300 leading-relaxed">
-            <li>Open this app on a main screen/tab and select <b className="text-amber-400">HOST</b>. Note P1 and P2 PINs.</li>
-            <li>Player 1 and Player 2 connect via <b className="text-cyan-300">CAST</b> on mobile devices/tabs using their PINs.</li>
-            <li>Walk freely along <b>X and Z axes</b> (Up/Down/Left/Right) in 3D space to collect gems, stars, & chests!</li>
-            <li>Team up near Golden Chests for a <b>Double Co-Op Team Bonus</b>! Dynamic biomes shift as you explore!</li>
+            <li>Select <b className="text-amber-400">RECEIVE / 1P</b> to launch the 3D main screen. You can play directly on PC/device with WASD (P1) and Arrows (P2)!</li>
+            <li>Switch seamlessly between <b className="text-amber-300 font-pixel"><Trophy className="w-3 h-3 inline mr-1" />EXPLORER ARENA</b> and <b className="text-emerald-300 font-pixel"><Sprout className="w-3 h-3 inline mr-1" />FARM SIMULATOR</b> on the top menu bar!</li>
+            <li>In <b className="text-emerald-300">FARM SIMULATOR</b>: Grab seeds from the bucket, plant them on tilled soil, watch them grow into fruits, and drop/sell them at the Voxel Shop for Gold Coins 💰!</li>
+            <li>Your positions, scores, farm crops, and coins auto-save locally whenever you switch modes or reload!</li>
+            <li>Customize your creature from <b className="text-cyan-300">32 UNIQUE VOXEL MONSTER VARIANTS</b>!</li>
           </ol>
         </div>
       </div>
