@@ -1,6 +1,6 @@
 export type AppMode = 'menu' | 'host' | 'cast';
 
-export type GameMode = 'explorer' | 'farm' | 'fishing';
+export type GameMode = 'explorer' | 'farm' | 'fishing' | 'dance';
 
 export type PlayerSlot = 'P1' | 'P2';
 
@@ -74,6 +74,9 @@ export interface SinglePlayerState {
   fishingProgress?: number; // 0 to 1
   caughtFish?: { type: string, weight: number } | null;
   fishCaughtCount?: number;
+  danceScore?: number;
+  comboStreak?: number;
+  activeDanceEmote?: number; // 0 = none, 1 = breakdance, 2 = shuffle, 3 = robot, 4 = salsa
 }
 
 export type CropType = 'carrot' | 'pumpkin' | 'berry' | 'melon';

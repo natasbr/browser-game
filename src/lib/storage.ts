@@ -33,9 +33,19 @@ export interface SavedFishingState {
   p2FishCount: number;
 }
 
+export interface SavedDanceState {
+  p1Pos: { x: number; y: number; z: number };
+  p2Pos: { x: number; y: number; z: number };
+  p1DanceScore: number;
+  p2DanceScore: number;
+  p1Combo: number;
+  p2Combo: number;
+}
+
 const STORAGE_KEY_EXPLORER = 'voxel_monsters_explorer_state_v1';
 const STORAGE_KEY_FARM = 'voxel_monsters_farm_state_v1';
 const STORAGE_KEY_FISHING = 'voxel_monsters_fishing_state_v1';
+const STORAGE_KEY_DANCE = 'voxel_monsters_dance_state_v1';
 const STORAGE_KEY_MODE = 'voxel_monsters_active_mode_v1';
 
 export function saveExplorerState(state: SavedExplorerState) {
@@ -83,6 +93,23 @@ export function saveFishingState(state: SavedFishingState) {
 export function loadFishingState(): SavedFishingState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_FISHING);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveDanceState(state: SavedDanceState) {
+  try {
+    localStorage.setItem(STORAGE_KEY_DANCE, JSON.stringify(state));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+export function loadDanceState(): SavedDanceState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DANCE);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;

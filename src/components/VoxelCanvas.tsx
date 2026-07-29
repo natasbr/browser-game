@@ -20,6 +20,8 @@ import {
   saveFarmState,
   loadFishingState,
   saveFishingState,
+  loadDanceState,
+  saveDanceState,
 } from '../lib/storage';
 
 interface VoxelCanvasProps {
