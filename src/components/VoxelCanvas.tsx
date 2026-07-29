@@ -30,6 +30,7 @@ interface VoxelCanvasProps {
   onGameStateUpdate?: (state: GameStatePayload) => void;
   isHostView?: boolean;
   focusSlot?: PlayerSlot | null; // Used for Cast screen to view specific player POV
+  syncedState?: GameStatePayload | null; // For the Cast screen to sync positions
 }
 
 // Biome Color Palette Configuration
@@ -102,11 +103,15 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
   stageTheme = 'cyber_grid',
   onGameStateUpdate,
   focusSlot = null,
+  syncedState = null,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
   const gameModeRef = useRef<GameMode>(gameMode);
   gameModeRef.current = gameMode;
+
+  const syncedStateRef = useRef<GameStatePayload | null>(syncedState);
+  syncedStateRef.current = syncedState;
 
   const p1InputRef = useRef<PlayerInputState>(p1Input);
   p1InputRef.current = p1Input;
@@ -732,7 +737,8 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
 
       const speed = 5.2;
 
-      // 1. UPDATE PLAYER 1 (X & Z MOVEMENT)
+      if (!syncedStateRef.current) {
+        // 1. UPDATE PLAYER 1 (X & Z MOVEMENT)
       const in1 = p1InputRef.current;
       let p1MoveX = 0;
       let p1MoveZ = 0;
@@ -1250,6 +1256,75 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           p2Fruit: p2HeldFruit,
           crops: farmCropsList,
         });
+      }
+      } else {
+        // --- SYNC FROM HOST ---
+        const s = syncedStateRef.current;
+        
+        // Use lerp for smooth visual positions while keeping velocity for animation
+        const dx1 = s.p1.x - p1State.x;
+        const dz1 = s.p1.z - p1State.z;
+        p1State.vx = dx1 * 10;
+        p1State.vz = dz1 * 10;
+        
+        // Lerp position (0.3 is the smoothing factor)
+        p1State.x += dx1 * 0.3;
+        p1State.y += (s.p1.y - p1State.y) * 0.3;
+        p1State.z += dz1 * 0.3;
+        
+        // If distance is large (e.g. mode switch), snap directly
+        if (Math.hypot(dx1, dz1) > 2.0) {
+            p1State.x = s.p1.x;
+            p1State.y = s.p1.y;
+            p1State.z = s.p1.z;
+        }
+
+        p1State.facing = s.p1.facing;
+        p1State.isDashing = s.p1.isDashing;
+        p1State.actionText = s.p1.actionText;
+
+        const dx2 = s.p2.x - p2State.x;
+        const dz2 = s.p2.z - p2State.z;
+        p2State.vx = dx2 * 10;
+        p2State.vz = dz2 * 10;
+        
+        p2State.x += dx2 * 0.3;
+        p2State.y += (s.p2.y - p2State.y) * 0.3;
+        p2State.z += dz2 * 0.3;
+        
+        if (Math.hypot(dx2, dz2) > 2.0) {
+            p2State.x = s.p2.x;
+            p2State.y = s.p2.y;
+            p2State.z = s.p2.z;
+        }
+
+        p2State.facing = s.p2.facing;
+        p2State.isDashing = s.p2.isDashing;
+        p2State.actionText = s.p2.actionText;
+
+        p1HeldSeed = s.p1.holdingSeed || null;
+        p1HeldFruit = s.p1.holdingFruit || null;
+        p2HeldSeed = s.p2.holdingSeed || null;
+        p2HeldFruit = s.p2.holdingFruit || null;
+
+        // SYNC CROPS VISUALLY
+        const currentSyncedCropIds = new Set(s.crops.map(c => c.id));
+        s.crops.forEach(syncedCrop => {
+           const existing = farmCropsList.find(c => c.id === syncedCrop.id);
+           if (!existing || existing.stage !== syncedCrop.stage) {
+               updateOrCreateCropMesh(syncedCrop);
+           }
+        });
+        
+        // Remove crops that are no longer in synced state
+        Array.from(cropMeshes.keys()).forEach(id => {
+          if (!currentSyncedCropIds.has(id)) {
+            const mesh = cropMeshes.get(id);
+            if (mesh) scene.remove(mesh);
+            cropMeshes.delete(id);
+          }
+        });
+        farmCropsList = s.crops.map(c => ({...c}));
       }
 
       // Update held items in 3D hands

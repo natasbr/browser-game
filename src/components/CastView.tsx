@@ -304,6 +304,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
               p2MonsterType={syncedState?.p2.monsterType || 'frost_wolf'}
               stageTheme={syncedState?.stageTheme || 'cyber_grid'}
               focusSlot={assignedSlot}
+              syncedState={syncedState}
             />
           </div>
 
