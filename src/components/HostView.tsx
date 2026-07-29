@@ -173,6 +173,14 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
         case 'dash':
         case 'interact':
           return { ...prev, dash: true, interact: true };
+        case 'dance_1':
+          return { ...prev, danceEmote: 1 };
+        case 'dance_2':
+          return { ...prev, danceEmote: 2 };
+        case 'dance_3':
+          return { ...prev, danceEmote: 3 };
+        case 'dance_4':
+          return { ...prev, danceEmote: 4 };
         default:
           return prev;
       }
@@ -181,6 +189,9 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
     if (action === 'jump') setTimeout(() => setter((p) => ({ ...p, jump: false })), 60);
     if (action === 'dash' || action === 'interact') {
       setTimeout(() => setter((p) => ({ ...p, dash: false, interact: false })), 60);
+    }
+    if (action.startsWith('dance_')) {
+      setTimeout(() => setter((p) => ({ ...p, danceEmote: 0 })), 200);
     }
   };
 
@@ -287,6 +298,17 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
             <div className="flex items-center gap-1 text-[10px] font-vt text-emerald-400 bg-slate-950 px-2 py-1 rounded border border-emerald-500/30">
               <Save className="w-3 h-3 text-emerald-400 animate-pulse" /> SAVED
             </div>
+
+            <button
+              onClick={() => {
+                localStorage.clear();
+                window.location.reload();
+              }}
+              className="retro-btn text-[10px] px-2.5 py-1 bg-red-950/80 text-red-300 border border-red-600 hover:bg-red-900 flex items-center gap-1 font-pixel shadow"
+              title="Reset All Scores & Progress"
+            >
+              🔄 RESET SCORES
+            </button>
 
             <button onClick={toggleSound} className="retro-btn p-1.5 text-amber-300">
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
