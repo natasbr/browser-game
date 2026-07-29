@@ -33,6 +33,7 @@ import {
   Trophy,
   Gamepad2,
   Save,
+  Fish,
 } from 'lucide-react';
 
 interface HostViewProps {
@@ -293,9 +294,13 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
                 <span className="text-amber-300 flex items-center gap-1">
                   <Gem className="w-3.5 h-3.5" /> {gameState.p1.score} PTS
                 </span>
-              ) : (
+              ) : activeGameMode === 'farm' ? (
                 <span className="text-amber-300 flex items-center gap-1">
                   <Coins className="w-3.5 h-3.5" /> {gameState.p1.gold} GOLD
+                </span>
+              ) : (
+                <span className="text-amber-300 flex items-center gap-1">
+                  <Fish className="w-3.5 h-3.5" /> {gameState.p1.fishCaughtCount || 0} FISH
                 </span>
               )}
               {gameState.p1.holdingSeed && <span className="text-[10px] text-amber-200">🌰 {gameState.p1.holdingSeed.toUpperCase()}</span>}
@@ -308,9 +313,13 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
                 <span className="text-emerald-300 flex items-center gap-1 text-sm">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" /> TEAM: {gameState.teamScore} PTS ({gameState.biomeName.toUpperCase()})
                 </span>
-              ) : (
+              ) : activeGameMode === 'farm' ? (
                 <span className="text-amber-300 flex items-center gap-1 text-sm">
                   <Sprout className="w-4 h-4 text-emerald-400" /> FARM VAULT: {gameState.teamGold} GOLD ({gameState.crops?.length || 0} CROPS)
+                </span>
+              ) : (
+                <span className="text-blue-300 flex items-center gap-1 text-sm">
+                  <Fish className="w-4 h-4 text-blue-400" /> FISHING LAGOON
                 </span>
               )}
             </div>
@@ -322,9 +331,13 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
                 <span className="text-cyan-300 flex items-center gap-1">
                   <Gem className="w-3.5 h-3.5" /> {gameState.p2.score} PTS
                 </span>
-              ) : (
+              ) : activeGameMode === 'farm' ? (
                 <span className="text-cyan-300 flex items-center gap-1">
                   <Coins className="w-3.5 h-3.5" /> {gameState.p2.gold} GOLD
+                </span>
+              ) : (
+                <span className="text-cyan-300 flex items-center gap-1">
+                  <Fish className="w-3.5 h-3.5" /> {gameState.p2.fishCaughtCount || 0} FISH
                 </span>
               )}
               {gameState.p2.holdingSeed && <span className="text-[10px] text-cyan-200">🌰 {gameState.p2.holdingSeed.toUpperCase()}</span>}

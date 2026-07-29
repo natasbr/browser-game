@@ -18,6 +18,8 @@ import {
   saveExplorerState,
   loadFarmState,
   saveFarmState,
+  loadFishingState,
+  saveFishingState,
 } from '../lib/storage';
 
 interface VoxelCanvasProps {
@@ -151,12 +153,12 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     scene.fog = new THREE.FogExp2(activeBgColor.getHex(), initialBiome.fogDensity);
 
     // --- CAMERAS (MAIN JOINT, P1 FOCUS, P2 FOCUS) ---
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
     camera.position.set(0, 8.5, 14);
     camera.lookAt(0, 0, 0);
 
-    const cameraP1 = new THREE.PerspectiveCamera(45, (width / 2) / height, 0.1, 100);
-    const cameraP2 = new THREE.PerspectiveCamera(45, (width / 2) / height, 0.1, 100);
+    const cameraP1 = new THREE.PerspectiveCamera(60, (width / 2) / height, 0.1, 100);
+    const cameraP2 = new THREE.PerspectiveCamera(60, (width / 2) / height, 0.1, 100);
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
@@ -404,13 +406,27 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       playerMesh: ReturnType<typeof buildMonsterMesh>,
       currentHeldRef: THREE.Object3D | null,
       seed: CropType | null,
-      fruit: CropType | null
+      fruit: CropType | null,
+      caughtFish?: { type: string, weight: number } | null
     ): THREE.Object3D | null {
       if (currentHeldRef) {
         playerMesh.itemAnchor.remove(currentHeldRef);
       }
 
-      if (fruit) {
+      if (caughtFish) {
+        // Simple fish model
+        const g = new THREE.Group();
+        const mat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
+        const body = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 16), mat);
+        body.rotation.x = Math.PI / 2;
+        g.add(body);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 4), mat);
+        tail.rotation.x = -Math.PI / 2;
+        tail.position.z = -0.5;
+        g.add(tail);
+        playerMesh.itemAnchor.add(g);
+        return g;
+      } else if (fruit) {
         const fruitColors: Record<CropType, number> = {
           carrot: 0xf97316,
           pumpkin: 0xeab308,
@@ -672,6 +688,31 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       "Mackerel", "Sardine", "Anchovy", "Herring", "Sturgeon", "Eel", "Shark", "Ray", "Squid", "Octopus"
     ];
 
+    // --- PARTICLES ---
+    interface Particle {
+      mesh: THREE.Mesh;
+      vx: number; vy: number; vz: number;
+      life: number;
+      maxLife: number;
+    }
+    const particles: Particle[] = [];
+    const spawnParticles = (x: number, y: number, z: number, color: number, count: number, speed: number) => {
+      for (let i = 0; i < count; i++) {
+        const mat = new THREE.MeshBasicMaterial({ color });
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), mat);
+        mesh.position.set(x, y, z);
+        lagoonGroup.add(mesh);
+        particles.push({
+          mesh,
+          vx: (Math.random() - 0.5) * speed,
+          vy: Math.random() * speed,
+          vz: (Math.random() - 0.5) * speed,
+          life: 1.0,
+          maxLife: 0.5 + Math.random() * 0.5,
+        });
+      }
+    };
+
     // --- RESTORE STATES OR INITIALIZE POSITIONS ---
     let p1ExplorerPos = loadedExplorer?.p1Pos || { x: -3.5, y: 0, z: 2.0 };
     let p2ExplorerPos = loadedExplorer?.p2Pos || { x: 3.5, y: 0, z: 2.0 };
@@ -692,9 +733,13 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     let p1HeldFruit: CropType | null = (loadedFarm?.p1Fruit as CropType) || null;
     let p2HeldFruit: CropType | null = (loadedFarm?.p2Fruit as CropType) || null;
 
+    const loadedFishing = loadFishingState();
+    let p1FishCount = loadedFishing?.p1FishCount || 0;
+    let p2FishCount = loadedFishing?.p2FishCount || 0;
+
     // Track active state per player
-    const initialPos1 = gameMode === 'farm' ? p1FarmPos : p1ExplorerPos;
-    const initialPos2 = gameMode === 'farm' ? p2FarmPos : p2ExplorerPos;
+    const initialPos1 = gameMode === 'fishing' ? { x: -6, y: 0, z: 10 } : (gameMode === 'farm' ? p1FarmPos : p1ExplorerPos);
+    const initialPos2 = gameMode === 'fishing' ? { x: 6, y: 0, z: 10 } : (gameMode === 'farm' ? p2FarmPos : p2ExplorerPos);
 
     let p1State = {
       x: initialPos1.x,
@@ -713,6 +758,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       fishingBobber: { x: -3, z: 0 },
       fishingProgress: 0,
       caughtFish: null as { type: string, weight: number } | null,
+      fishCaughtCount: p1FishCount,
     };
 
     let p2State = {
@@ -732,6 +778,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       fishingBobber: { x: 3, z: 0 },
       fishingProgress: 0,
       caughtFish: null as { type: string, weight: number } | null,
+      fishCaughtCount: p2FishCount,
     };
 
     let lastActiveMode: GameMode = (gameMode || 'explorer') as GameMode;
@@ -1376,6 +1423,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
                   pState.fishingState = 'biting';
                   pState.actionText = 'FISH IS BITING!! REEL NOW!!';
                   sound.playJump();
+                  spawnParticles(pBobber.position.x, pBobber.position.y, pBobber.position.z, 0x38bdf8, 10, 2); // splash
                 }
               }, 2000 + Math.random() * 3000);
             }
@@ -1388,6 +1436,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
             nearbyCtx = 'BITE!! PRESS ACTION!';
             pBobber.visible = true;
             pBobber.position.y = -0.1 + Math.random() * 0.1;
+            if (Math.random() < 0.2) spawnParticles(pBobber.position.x, 0.1, pBobber.position.z, 0x38bdf8, 2, 1);
             
             if (actionPressed) {
               pState.fishingState = 'reeling';
@@ -1407,6 +1456,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
             nearbyCtx = `REELING: ${Math.floor(pState.fishingProgress * 100)}%`;
             pBobber.visible = true;
             pBobber.position.y = Math.random() * 0.2;
+            if (Math.random() < 0.3) spawnParticles(pBobber.position.x, 0.1, pBobber.position.z, 0x38bdf8, 3, 2);
             
             if (actionPressed) {
               pState.fishingProgress += 0.15;
@@ -1423,7 +1473,14 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
               const weight = Math.round((0.5 + Math.random() * 50) * 10) / 10;
               pState.caughtFish = { type, weight };
               pState.actionText = `CAUGHT A ${type.toUpperCase()}! (${weight}kg)`;
+              pState.fishCaughtCount = (pState.fishCaughtCount || 0) + 1;
               sound.playChestOpen();
+              
+              // Confetti
+              const colors = [0xf43f5e, 0x38bdf8, 0xfacc15, 0x4ade80, 0xa855f7];
+              for (let i = 0; i < 5; i++) {
+                spawnParticles(pState.x, pState.y + 2, pState.z, colors[i], 10, 4);
+              }
               
               setTimeout(() => {
                 if (pState.fishingState === 'caught') {
@@ -1446,6 +1503,13 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
 
         prevP1Input.action = Boolean(in1.dash || in1.interact);
         prevP2Input.action = Boolean(in2.dash || in2.interact);
+        
+        saveFishingState({
+          p1Pos: { x: p1State.x, y: p1State.y, z: p1State.z },
+          p2Pos: { x: p2State.x, y: p2State.y, z: p2State.z },
+          p1FishCount: p1State.fishCaughtCount || 0,
+          p2FishCount: p2State.fishCaughtCount || 0,
+        });
       }
 
       // Report State to Parent Component
@@ -1574,8 +1638,8 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       }
 
       // Update held items in 3D hands
-      p1HeldMesh = updateHeldMesh(p1Mesh, p1HeldMesh, p1HeldSeed, p1HeldFruit);
-      p2HeldMesh = updateHeldMesh(p2Mesh, p2HeldMesh, p2HeldSeed, p2HeldFruit);
+      p1HeldMesh = updateHeldMesh(p1Mesh, p1HeldMesh, p1HeldSeed, p1HeldFruit, p1State.caughtFish);
+      p2HeldMesh = updateHeldMesh(p2Mesh, p2HeldMesh, p2HeldSeed, p2HeldFruit, p2State.caughtFish);
 
       // 5. UPDATE MESH POSITIONS & ANIMATION EFFECTS
       // P1 Mesh
@@ -1709,6 +1773,22 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
            fMesh.position.z = Math.max(-7, Math.min(7, fMesh.position.z));
            fMesh.rotation.z = Math.atan2(Math.sin(time * 0.5 + i), Math.cos(time * 0.4 + i));
         });
+        
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.mesh.position.x += p.vx * dt;
+          p.mesh.position.y += p.vy * dt;
+          p.mesh.position.z += p.vz * dt;
+          p.vy -= 9.8 * dt; // gravity
+          p.life -= dt;
+          if (p.life <= 0) {
+            lagoonGroup.remove(p.mesh);
+            p.mesh.geometry.dispose();
+            (p.mesh.material as THREE.Material).dispose();
+            particles.splice(i, 1);
+          }
+        }
       }
 
       // 6. DYNAMIC SPLIT SCREEN OR SINGLE CAMERA RENDERING
@@ -1723,8 +1803,8 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, curWidth, curHeight);
         camera.position.x += (p1State.x - camera.position.x) * 0.1;
-        camera.position.y += (10 - camera.position.y) * 0.1;
-        camera.position.z += (p1State.z + 13 - camera.position.z) * 0.1;
+        camera.position.y += (12 - camera.position.y) * 0.1;
+        camera.position.z += (p1State.z + 16 - camera.position.z) * 0.1;
         camera.lookAt(p1State.x, 0, p1State.z + 2);
         renderer.render(scene, camera);
       } else if (activeFocus === 'P2') {
@@ -1732,8 +1812,8 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, curWidth, curHeight);
         camera.position.x += (p2State.x - camera.position.x) * 0.1;
-        camera.position.y += (10 - camera.position.y) * 0.1;
-        camera.position.z += (p2State.z + 13 - camera.position.z) * 0.1;
+        camera.position.y += (12 - camera.position.y) * 0.1;
+        camera.position.z += (p2State.z + 16 - camera.position.z) * 0.1;
         camera.lookAt(p2State.x, 0, p2State.z + 2);
         renderer.render(scene, camera);
       } else if (playerDistance > 8.0) {
@@ -1743,7 +1823,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         // Render P1 Half View (Left Screen)
         cameraP1.aspect = halfW / curHeight;
         cameraP1.updateProjectionMatrix();
-        cameraP1.position.set(p1State.x, p1State.y + 8.5, p1State.z + 11);
+        cameraP1.position.set(p1State.x, p1State.y + 10, p1State.z + 14);
         cameraP1.lookAt(p1State.x, p1State.y, p1State.z);
 
         renderer.setScissorTest(true);
@@ -1754,7 +1834,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         // Render P2 Half View (Right Screen)
         cameraP2.aspect = halfW / curHeight;
         cameraP2.updateProjectionMatrix();
-        cameraP2.position.set(p2State.x, p2State.y + 8.5, p2State.z + 11);
+        cameraP2.position.set(p2State.x, p2State.y + 10, p2State.z + 14);
         cameraP2.lookAt(p2State.x, p2State.y, p2State.z);
 
         renderer.setViewport(halfW + 2, 0, halfW - 2, curHeight);
@@ -1771,9 +1851,9 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         const midZ = (p1State.z + p2State.z) / 2;
 
         camera.position.x += (midX - camera.position.x) * 0.08;
-        camera.position.y += (8.5 - camera.position.y) * 0.08;
-        camera.position.z += (midZ + 11 - camera.position.z) * 0.08;
-        camera.lookAt(camera.position.x, 0, camera.position.z - 11);
+        camera.position.y += (10 - camera.position.y) * 0.08;
+        camera.position.z += (midZ + 14 - camera.position.z) * 0.08;
+        camera.lookAt(camera.position.x, 0, camera.position.z - 14);
 
         renderer.render(scene, camera);
       }

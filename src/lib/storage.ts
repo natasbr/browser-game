@@ -26,8 +26,16 @@ export interface SavedFarmState {
   crops: FarmCropTile[];
 }
 
+export interface SavedFishingState {
+  p1Pos: { x: number; y: number; z: number };
+  p2Pos: { x: number; y: number; z: number };
+  p1FishCount: number;
+  p2FishCount: number;
+}
+
 const STORAGE_KEY_EXPLORER = 'voxel_monsters_explorer_state_v1';
 const STORAGE_KEY_FARM = 'voxel_monsters_farm_state_v1';
+const STORAGE_KEY_FISHING = 'voxel_monsters_fishing_state_v1';
 const STORAGE_KEY_MODE = 'voxel_monsters_active_mode_v1';
 
 export function saveExplorerState(state: SavedExplorerState) {
@@ -58,6 +66,23 @@ export function saveFarmState(state: SavedFarmState) {
 export function loadFarmState(): SavedFarmState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_FARM);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveFishingState(state: SavedFishingState) {
+  try {
+    localStorage.setItem(STORAGE_KEY_FISHING, JSON.stringify(state));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+export function loadFishingState(): SavedFishingState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_FISHING);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;

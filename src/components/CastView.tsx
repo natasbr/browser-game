@@ -26,6 +26,7 @@ import {
   Sprout,
   Hand,
   Tv,
+  Fish,
 } from 'lucide-react';
 
 interface CastViewProps {
@@ -238,7 +239,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
             {assignedSlot ? `${assignedSlot} LIVE POV CAST` : 'CAST REMOTE'}
           </div>
           <div className="text-[10px] font-vt text-slate-400">
-            {isFarmMode ? '🌾 FARM SIMULATOR CONTROLLER' : '🏆 ARENA EXPLORER CONTROLLER'}
+            {syncedState?.gameMode === 'fishing' ? '🎣 FISHING LAGOON CONTROLLER' : isFarmMode ? '🌾 FARM SIMULATOR CONTROLLER' : '🏆 ARENA EXPLORER CONTROLLER'}
           </div>
         </div>
 
@@ -320,7 +321,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 SLOT: {assignedSlot} ({myState ? myState.monsterType.toUpperCase().replace('_', ' ') : 'MONSTER'})
               </span>
               <span className="text-emerald-400 font-pixel">
-                {isFarmMode ? `VAULT: ${syncedState?.teamGold ?? 0} GOLD` : `TEAM SCORE: ${syncedState?.teamScore ?? 0}`}
+                {syncedState?.gameMode === 'fishing' ? `CAUGHT: ${myState?.fishCaughtCount ?? 0} FISH` : isFarmMode ? `VAULT: ${syncedState?.teamGold ?? 0} GOLD` : `TEAM SCORE: ${syncedState?.teamScore ?? 0}`}
               </span>
             </div>
 

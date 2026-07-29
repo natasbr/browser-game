@@ -73,6 +73,7 @@ export interface SinglePlayerState {
   fishingBobber?: { x: number, z: number } | null;
   fishingProgress?: number; // 0 to 1
   caughtFish?: { type: string, weight: number } | null;
+  fishCaughtCount?: number;
 }
 
 export type CropType = 'carrot' | 'pumpkin' | 'berry' | 'melon';
