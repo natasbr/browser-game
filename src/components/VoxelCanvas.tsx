@@ -1257,6 +1257,51 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           crops: farmCropsList,
         });
       }
+
+      // Report State to Parent Component
+      if (onGameStateUpdate) {
+        onGameStateUpdate({
+          gameMode: currentMode,
+          p1: {
+            x: Math.round(p1State.x * 10) / 10,
+            y: Math.round(p1State.y * 10) / 10,
+            z: Math.round(p1State.z * 10) / 10,
+            facing: p1State.facing,
+            score: p1ExplorerScore,
+            gold: p1FarmGold,
+            gemsCollected: p1GemsCollected,
+            isDashing: p1State.isDashing,
+            monsterType: p1MonsterType,
+            actionText: p1State.actionText,
+            holdingSeed: p1HeldSeed,
+            holdingFruit: p1HeldFruit,
+          },
+          p2: {
+            x: Math.round(p2State.x * 10) / 10,
+            y: Math.round(p2State.y * 10) / 10,
+            z: Math.round(p2State.z * 10) / 10,
+            facing: p2State.facing,
+            score: p2ExplorerScore,
+            gold: p2FarmGold,
+            gemsCollected: p2GemsCollected,
+            isDashing: p2State.isDashing,
+            monsterType: p2MonsterType,
+            actionText: p2State.actionText,
+            holdingSeed: p2HeldSeed,
+            holdingFruit: p2HeldFruit,
+          },
+          teamScore: explorerTeamTotalScore,
+          teamGold: farmTeamGold,
+          stageTheme: targetBiomeTheme,
+          biomeName: currentMode === 'farm' ? 'Co-Op Farmstead' : targetBiome.name,
+          distanceExplored: Math.round(totalDistanceExplored),
+          collectibles: initialItems.filter((it) => it.active),
+          crops: farmCropsList,
+          announcement: announcementText,
+          p1NearbyContext: p1NearbyContext,
+          p2NearbyContext: p2NearbyContext,
+        });
+      }
       } else {
         // --- SYNC FROM HOST ---
         const s = syncedStateRef.current;
@@ -1481,51 +1526,6 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         camera.lookAt(camera.position.x, 0, camera.position.z - 11);
 
         renderer.render(scene, camera);
-      }
-
-      // Report State to Parent Component
-      if (onGameStateUpdate) {
-        onGameStateUpdate({
-          gameMode: currentMode,
-          p1: {
-            x: Math.round(p1State.x * 10) / 10,
-            y: Math.round(p1State.y * 10) / 10,
-            z: Math.round(p1State.z * 10) / 10,
-            facing: p1State.facing,
-            score: p1ExplorerScore,
-            gold: p1FarmGold,
-            gemsCollected: p1GemsCollected,
-            isDashing: p1State.isDashing,
-            monsterType: p1MonsterType,
-            actionText: p1State.actionText,
-            holdingSeed: p1HeldSeed,
-            holdingFruit: p1HeldFruit,
-          },
-          p2: {
-            x: Math.round(p2State.x * 10) / 10,
-            y: Math.round(p2State.y * 10) / 10,
-            z: Math.round(p2State.z * 10) / 10,
-            facing: p2State.facing,
-            score: p2ExplorerScore,
-            gold: p2FarmGold,
-            gemsCollected: p2GemsCollected,
-            isDashing: p2State.isDashing,
-            monsterType: p2MonsterType,
-            actionText: p2State.actionText,
-            holdingSeed: p2HeldSeed,
-            holdingFruit: p2HeldFruit,
-          },
-          teamScore: explorerTeamTotalScore,
-          teamGold: farmTeamGold,
-          stageTheme: targetBiomeTheme,
-          biomeName: currentMode === 'farm' ? 'Co-Op Farmstead' : targetBiome.name,
-          distanceExplored: Math.round(totalDistanceExplored),
-          collectibles: initialItems.filter((it) => it.active),
-          crops: farmCropsList,
-          announcement: announcementText,
-          p1NearbyContext: p1NearbyContext,
-          p2NearbyContext: p2NearbyContext,
-        });
       }
     };
 
