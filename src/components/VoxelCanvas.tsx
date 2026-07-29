@@ -648,16 +648,34 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     dockMesh.castShadow = true;
     lagoonGroup.add(dockMesh);
 
-    // Fish Shadows (visual only)
-    const fishShadowMeshes: THREE.Mesh[] = [];
+    // 3D Swimming Fish Groups
+    const fishGroups: THREE.Group[] = [];
     for (let i = 0; i < 6; i++) {
-      const fMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
-      const fMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.3), fMat);
-      fMesh.rotation.x = -Math.PI / 2;
-      fMesh.position.set((Math.random() - 0.5) * 14, 0.06, (Math.random() - 0.5) * 14);
-      lagoonGroup.add(fMesh);
-      fishShadowMeshes.push(fMesh);
+      const fg = new THREE.Group();
+      const bodyMat = new THREE.MeshLambertMaterial({ color: i % 2 === 0 ? 0x0284c7 : 0xf59e0b });
+      const body = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 8), bodyMat);
+      body.rotation.x = Math.PI / 2;
+      fg.add(body);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 4), bodyMat);
+      tail.rotation.x = -Math.PI / 2;
+      tail.position.z = -0.4;
+      fg.add(tail);
+      fg.position.set((Math.random() - 0.5) * 12, 0.08, (Math.random() - 0.5) * 12);
+      lagoonGroup.add(fg);
+      fishGroups.push(fg);
     }
+
+    // 3D Fishing Lines
+    const createFishingLine = (color: number) => {
+      const lineMat = new THREE.LineBasicMaterial({ color, linewidth: 3 });
+      const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)];
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geom, lineMat);
+      lagoonGroup.add(line);
+      return line;
+    };
+    const p1FishingLine = createFishingLine(0x38bdf8);
+    const p2FishingLine = createFishingLine(0xf43f5e);
     
     // Bobber targets
     const createTargetMesh = (color: number) => {
@@ -1764,14 +1782,38 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
            p2BobberMesh.visible = false;
         }
         
-        // Swim shadows
-        fishShadowMeshes.forEach((fMesh, i) => {
-           fMesh.position.x += Math.sin(time * 0.5 + i) * dt * 2.0;
-           fMesh.position.z += Math.cos(time * 0.4 + i) * dt * 2.0;
-           // Keep in bounds
-           fMesh.position.x = Math.max(-7, Math.min(7, fMesh.position.x));
-           fMesh.position.z = Math.max(-7, Math.min(7, fMesh.position.z));
-           fMesh.rotation.z = Math.atan2(Math.sin(time * 0.5 + i), Math.cos(time * 0.4 + i));
+        // Update P1 fishing line
+        if (p1State.fishingState !== 'idle' && p1State.fishingState !== 'caught') {
+          p1FishingLine.visible = true;
+          const pts = [
+            new THREE.Vector3(p1State.x, p1State.y + 0.8, p1State.z),
+            new THREE.Vector3(p1BobberMesh.position.x, p1BobberMesh.position.y, p1BobberMesh.position.z)
+          ];
+          p1FishingLine.geometry.setFromPoints(pts);
+        } else {
+          p1FishingLine.visible = false;
+        }
+
+        // Update P2 fishing line
+        if (p2State.fishingState !== 'idle' && p2State.fishingState !== 'caught') {
+          p2FishingLine.visible = true;
+          const pts = [
+            new THREE.Vector3(p2State.x, p2State.y + 0.8, p2State.z),
+            new THREE.Vector3(p2BobberMesh.position.x, p2BobberMesh.position.y, p2BobberMesh.position.z)
+          ];
+          p2FishingLine.geometry.setFromPoints(pts);
+        } else {
+          p2FishingLine.visible = false;
+        }
+
+        // Swim 3D fish groups
+        fishGroups.forEach((fg, i) => {
+           fg.position.x += Math.sin(time * 0.8 + i) * dt * 2.5;
+           fg.position.z += Math.cos(time * 0.6 + i) * dt * 2.5;
+           fg.position.y = 0.08 + Math.sin(time * 3 + i) * 0.05;
+           fg.position.x = Math.max(-7, Math.min(7, fg.position.x));
+           fg.position.z = Math.max(-7, Math.min(7, fg.position.z));
+           fg.rotation.y = Math.atan2(Math.cos(time * 0.8 + i), -Math.sin(time * 0.6 + i));
         });
         
         // Particles

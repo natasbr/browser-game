@@ -293,9 +293,9 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
         /* CONNECTED CONTROLLER SCREEN WITH LIVE 3D POV SCREEN */
         <div className="w-full flex-1 flex flex-col items-center justify-between gap-2 py-1 overflow-hidden">
           {/* LIVE 3D POV SCREEN ACCORDING TO ASSIGNED PLAYER SLOT */}
-          <div className="relative w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border-2 border-slate-700 bg-black">
-            <div className="absolute top-1 left-1.5 z-10 text-[9px] font-pixel bg-slate-900/90 px-2 py-0.5 rounded border border-amber-500/60 text-amber-300 flex items-center gap-1">
-              <Tv className="w-3 h-3 text-emerald-400" /> LIVE POV STREAM ({assignedSlot})
+          <div className="relative w-full h-[300px] sm:h-[420px] rounded-lg overflow-hidden border-2 border-slate-700 bg-black shadow-2xl">
+            <div className="absolute top-1.5 left-2 z-10 text-[10px] font-pixel bg-slate-900/90 px-2.5 py-1 rounded border border-amber-500/60 text-amber-300 flex items-center gap-1.5 shadow">
+              <Tv className="w-3.5 h-3.5 text-emerald-400" /> LIVE POV STREAM ({assignedSlot})
             </div>
             <VoxelCanvas
               gameMode={syncedState?.gameMode || 'explorer'}
