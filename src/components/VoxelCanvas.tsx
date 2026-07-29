@@ -610,6 +610,68 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
 
     farmCropsList.forEach((c) => updateOrCreateCropMesh(c));
 
+    // --- FISHING MODE STRUCTURES ---
+    const lagoonGroup = new THREE.Group();
+    stageGroup.add(lagoonGroup);
+    
+    // Lagoon Water Plane
+    const waterGeo = new THREE.PlaneGeometry(16, 16);
+    const waterMat = new THREE.MeshLambertMaterial({ color: 0x0284c7, transparent: true, opacity: 0.8 });
+    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterMesh.rotation.x = -Math.PI / 2;
+    waterMesh.position.y = 0.05;
+    waterMesh.receiveShadow = true;
+    lagoonGroup.add(waterMesh);
+    
+    // Lagoon Dock / Deck
+    const dockGeo = new THREE.BoxGeometry(18, 0.4, 4);
+    const dockMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+    const dockMesh = new THREE.Mesh(dockGeo, dockMat);
+    dockMesh.position.set(0, 0.1, 10);
+    dockMesh.receiveShadow = true;
+    dockMesh.castShadow = true;
+    lagoonGroup.add(dockMesh);
+
+    // Fish Shadows (visual only)
+    const fishShadowMeshes: THREE.Mesh[] = [];
+    for (let i = 0; i < 6; i++) {
+      const fMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
+      const fMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.3), fMat);
+      fMesh.rotation.x = -Math.PI / 2;
+      fMesh.position.set((Math.random() - 0.5) * 14, 0.06, (Math.random() - 0.5) * 14);
+      lagoonGroup.add(fMesh);
+      fishShadowMeshes.push(fMesh);
+    }
+    
+    // Bobber targets
+    const createTargetMesh = (color: number) => {
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.5, 16), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.07;
+      g.add(ring);
+      lagoonGroup.add(g);
+      return g;
+    };
+    const p1TargetMesh = createTargetMesh(0x38bdf8);
+    const p2TargetMesh = createTargetMesh(0xf43f5e);
+    
+    // Bobbers
+    const createBobberMesh = () => {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshLambertMaterial({ color: 0xff0000 }));
+      b.position.y = 0.1;
+      lagoonGroup.add(b);
+      return b;
+    };
+    const p1BobberMesh = createBobberMesh();
+    const p2BobberMesh = createBobberMesh();
+
+    const fishTypes = [
+      "Bluegill", "Bass", "Trout", "Salmon", "Catfish", "Carp", "Pike", "Walleye", "Perch", "Snapper",
+      "Grouper", "Tuna", "Marlin", "Swordfish", "Sailfish", "Mahi Mahi", "Halibut", "Flounder", "Cod", "Haddock",
+      "Mackerel", "Sardine", "Anchovy", "Herring", "Sturgeon", "Eel", "Shark", "Ray", "Squid", "Octopus"
+    ];
+
     // --- RESTORE STATES OR INITIALIZE POSITIONS ---
     let p1ExplorerPos = loadedExplorer?.p1Pos || { x: -3.5, y: 0, z: 2.0 };
     let p2ExplorerPos = loadedExplorer?.p2Pos || { x: 3.5, y: 0, z: 2.0 };
@@ -646,6 +708,11 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       isDashing: false,
       dashTimer: 0,
       actionText: 'CO-OP READY!',
+      fishingState: 'idle' as 'idle' | 'casting' | 'biting' | 'reeling' | 'caught',
+      fishingTarget: { x: -3, z: 0 },
+      fishingBobber: { x: -3, z: 0 },
+      fishingProgress: 0,
+      caughtFish: null as { type: string, weight: number } | null,
     };
 
     let p2State = {
@@ -660,6 +727,11 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       isDashing: false,
       dashTimer: 0,
       actionText: 'CO-OP READY!',
+      fishingState: 'idle' as 'idle' | 'casting' | 'biting' | 'reeling' | 'caught',
+      fishingTarget: { x: 3, z: 0 },
+      fishingBobber: { x: 3, z: 0 },
+      fishingProgress: 0,
+      caughtFish: null as { type: string, weight: number } | null,
     };
 
     let lastActiveMode: GameMode = (gameMode || 'explorer') as GameMode;
@@ -713,6 +785,13 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           p2State.x = p2FarmPos.x;
           p2State.y = p2FarmPos.y;
           p2State.z = p2FarmPos.z;
+        } else if (currentMode === 'fishing') {
+          p1State.x = -6;
+          p1State.y = 0;
+          p1State.z = 10;
+          p2State.x = 6;
+          p2State.y = 0;
+          p2State.z = 10;
         } else {
           p1State.x = p1ExplorerPos.x;
           p1State.y = p1ExplorerPos.y;
@@ -728,6 +807,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
       // Toggle Visibility between Explorer Pillars and Farm Buildings
       pillarGroup.visible = currentMode === 'explorer';
       farmGroup.visible = currentMode === 'farm';
+      lagoonGroup.visible = currentMode === 'fishing';
       collectibleMeshes.forEach((m) => {
         m.visible = currentMode === 'explorer';
       });
@@ -1256,6 +1336,116 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           p2Fruit: p2HeldFruit,
           crops: farmCropsList,
         });
+      } else if (currentMode === 'fishing') {
+        // --- FISHING MODE LOGIC ---
+        const handlePlayerFishing = (
+          pState: typeof p1State,
+          pInput: typeof in1,
+          prevInput: typeof prevP1Input,
+          pTarget: THREE.Group,
+          pBobber: THREE.Mesh
+        ) => {
+          let nearbyCtx = '';
+          const actionPressed = (pInput.dash || pInput.interact) && !prevInput.action;
+          
+          if (pState.fishingState === 'idle') {
+            nearbyCtx = 'MOVE TARGET & CAST 🎣';
+            // Move target
+            pState.fishingTarget.x += pState.vx * dt;
+            pState.fishingTarget.z += pState.vz * dt;
+            pState.fishingTarget.x = Math.max(-7.5, Math.min(7.5, pState.fishingTarget.x));
+            pState.fishingTarget.z = Math.max(-7.5, Math.min(7.5, pState.fishingTarget.z));
+            
+            pTarget.position.set(pState.fishingTarget.x, 0.07, pState.fishingTarget.z);
+            pTarget.visible = true;
+            pBobber.visible = false;
+            
+            if (actionPressed) {
+              pState.fishingState = 'casting';
+              pState.actionText = 'CASTING LINE!';
+              sound.playDash();
+              
+              // Place bobber
+              pState.fishingBobber.x = pState.fishingTarget.x;
+              pState.fishingBobber.z = pState.fishingTarget.z;
+              pBobber.position.set(pState.fishingBobber.x, 0.1, pState.fishingBobber.z);
+              
+              // Random time to bite
+              setTimeout(() => {
+                if (pState.fishingState === 'casting') {
+                  pState.fishingState = 'biting';
+                  pState.actionText = 'FISH IS BITING!! REEL NOW!!';
+                  sound.playJump();
+                }
+              }, 2000 + Math.random() * 3000);
+            }
+          } else if (pState.fishingState === 'casting') {
+            nearbyCtx = 'WAITING FOR BITE...';
+            pTarget.visible = false;
+            pBobber.visible = true;
+            pBobber.position.y = 0.1 + Math.sin(time * 5) * 0.05;
+          } else if (pState.fishingState === 'biting') {
+            nearbyCtx = 'BITE!! PRESS ACTION!';
+            pBobber.visible = true;
+            pBobber.position.y = -0.1 + Math.random() * 0.1;
+            
+            if (actionPressed) {
+              pState.fishingState = 'reeling';
+              pState.fishingProgress = 0;
+              pState.actionText = 'REELING... KEEP TAPPING!';
+            }
+            
+            // Fish got away if too slow (3 seconds)
+            if (!pBobber.userData.biteTimer) {
+              pBobber.userData.biteTimer = Date.now();
+            } else if (Date.now() - pBobber.userData.biteTimer > 3000) {
+               pState.fishingState = 'idle';
+               pState.actionText = 'FISH GOT AWAY...';
+               pBobber.userData.biteTimer = 0;
+            }
+          } else if (pState.fishingState === 'reeling') {
+            nearbyCtx = `REELING: ${Math.floor(pState.fishingProgress * 100)}%`;
+            pBobber.visible = true;
+            pBobber.position.y = Math.random() * 0.2;
+            
+            if (actionPressed) {
+              pState.fishingProgress += 0.15;
+              sound.playBeep(600 + pState.fishingProgress * 400, 0.05);
+            }
+            
+            // Struggle
+            pState.fishingProgress -= dt * 0.08;
+            pState.fishingProgress = Math.max(0, pState.fishingProgress);
+            
+            if (pState.fishingProgress >= 1.0) {
+              pState.fishingState = 'caught';
+              const type = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+              const weight = Math.round((0.5 + Math.random() * 50) * 10) / 10;
+              pState.caughtFish = { type, weight };
+              pState.actionText = `CAUGHT A ${type.toUpperCase()}! (${weight}kg)`;
+              sound.playChestOpen();
+              
+              setTimeout(() => {
+                if (pState.fishingState === 'caught') {
+                  pState.fishingState = 'idle';
+                  pState.caughtFish = null;
+                  pBobber.userData.biteTimer = 0;
+                }
+              }, 4000);
+            }
+          } else if (pState.fishingState === 'caught') {
+            nearbyCtx = 'NICE CATCH! 🐟';
+            pBobber.visible = false;
+          }
+          
+          return nearbyCtx;
+        };
+
+        p1NearbyContext = handlePlayerFishing(p1State, in1, prevP1Input, p1TargetMesh, p1BobberMesh);
+        p2NearbyContext = handlePlayerFishing(p2State, in2, prevP2Input, p2TargetMesh, p2BobberMesh);
+
+        prevP1Input.action = Boolean(in1.dash || in1.interact);
+        prevP2Input.action = Boolean(in2.dash || in2.interact);
       }
 
       // Report State to Parent Component
@@ -1275,6 +1465,11 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
             actionText: p1State.actionText,
             holdingSeed: p1HeldSeed,
             holdingFruit: p1HeldFruit,
+            fishingState: p1State.fishingState,
+            fishingTarget: p1State.fishingTarget,
+            fishingBobber: p1State.fishingBobber,
+            fishingProgress: p1State.fishingProgress,
+            caughtFish: p1State.caughtFish,
           },
           p2: {
             x: Math.round(p2State.x * 10) / 10,
@@ -1289,11 +1484,16 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
             actionText: p2State.actionText,
             holdingSeed: p2HeldSeed,
             holdingFruit: p2HeldFruit,
+            fishingState: p2State.fishingState,
+            fishingTarget: p2State.fishingTarget,
+            fishingBobber: p2State.fishingBobber,
+            fishingProgress: p2State.fishingProgress,
+            caughtFish: p2State.caughtFish,
           },
           teamScore: explorerTeamTotalScore,
           teamGold: farmTeamGold,
           stageTheme: targetBiomeTheme,
-          biomeName: currentMode === 'farm' ? 'Co-Op Farmstead' : targetBiome.name,
+          biomeName: currentMode === 'fishing' ? 'Fishing Lagoon' : currentMode === 'farm' ? 'Co-Op Farmstead' : targetBiome.name,
           distanceExplored: Math.round(totalDistanceExplored),
           collectibles: initialItems.filter((it) => it.active),
           crops: farmCropsList,
@@ -1306,46 +1506,47 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
         // --- SYNC FROM HOST ---
         const s = syncedStateRef.current;
         
-        // Use lerp for smooth visual positions while keeping velocity for animation
+        // Compute velocity for animation purposes (legs moving)
         const dx1 = s.p1.x - p1State.x;
         const dz1 = s.p1.z - p1State.z;
-        p1State.vx = dx1 * 10;
-        p1State.vz = dz1 * 10;
+        p1State.vx = dx1 * (1 / Math.max(dt, 0.01));
+        p1State.vz = dz1 * (1 / Math.max(dt, 0.01));
         
-        // Lerp position (0.3 is the smoothing factor)
-        p1State.x += dx1 * 0.3;
-        p1State.y += (s.p1.y - p1State.y) * 0.3;
-        p1State.z += dz1 * 0.3;
-        
-        // If distance is large (e.g. mode switch), snap directly
-        if (Math.hypot(dx1, dz1) > 2.0) {
-            p1State.x = s.p1.x;
-            p1State.y = s.p1.y;
-            p1State.z = s.p1.z;
-        }
+        // Exact position sync to prevent desync perception
+        p1State.x = s.p1.x;
+        p1State.y = s.p1.y;
+        p1State.z = s.p1.z;
 
         p1State.facing = s.p1.facing;
         p1State.isDashing = s.p1.isDashing;
         p1State.actionText = s.p1.actionText;
+        if (s.p1.fishingState) {
+          p1State.fishingState = s.p1.fishingState as any;
+          p1State.fishingTarget = s.p1.fishingTarget!;
+          p1State.fishingBobber = s.p1.fishingBobber!;
+          p1State.fishingProgress = s.p1.fishingProgress!;
+          p1State.caughtFish = s.p1.caughtFish || null;
+        }
 
         const dx2 = s.p2.x - p2State.x;
         const dz2 = s.p2.z - p2State.z;
-        p2State.vx = dx2 * 10;
-        p2State.vz = dz2 * 10;
+        p2State.vx = dx2 * (1 / Math.max(dt, 0.01));
+        p2State.vz = dz2 * (1 / Math.max(dt, 0.01));
         
-        p2State.x += dx2 * 0.3;
-        p2State.y += (s.p2.y - p2State.y) * 0.3;
-        p2State.z += dz2 * 0.3;
-        
-        if (Math.hypot(dx2, dz2) > 2.0) {
-            p2State.x = s.p2.x;
-            p2State.y = s.p2.y;
-            p2State.z = s.p2.z;
-        }
+        p2State.x = s.p2.x;
+        p2State.y = s.p2.y;
+        p2State.z = s.p2.z;
 
         p2State.facing = s.p2.facing;
         p2State.isDashing = s.p2.isDashing;
         p2State.actionText = s.p2.actionText;
+        if (s.p2.fishingState) {
+          p2State.fishingState = s.p2.fishingState as any;
+          p2State.fishingTarget = s.p2.fishingTarget!;
+          p2State.fishingBobber = s.p2.fishingBobber!;
+          p2State.fishingProgress = s.p2.fishingProgress!;
+          p2State.caughtFish = s.p2.caughtFish || null;
+        }
 
         p1HeldSeed = s.p1.holdingSeed || null;
         p1HeldFruit = s.p1.holdingFruit || null;
@@ -1459,6 +1660,55 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           p2Mesh.leftArm.rotation.x = 0;
           p2Mesh.rightArm.rotation.x = 0;
         }
+      }
+      
+      // Update Fishing Meshes based on state (runs on both host and client to keep visuals synced)
+      if (currentMode === 'fishing') {
+        // P1
+        if (p1State.fishingState === 'idle') {
+           p1TargetMesh.visible = true;
+           p1BobberMesh.visible = false;
+           p1TargetMesh.position.set(p1State.fishingTarget.x, 0.07, p1State.fishingTarget.z);
+        } else if (p1State.fishingState === 'casting' || p1State.fishingState === 'biting' || p1State.fishingState === 'reeling') {
+           p1TargetMesh.visible = false;
+           p1BobberMesh.visible = true;
+           p1BobberMesh.position.x = p1State.fishingBobber.x;
+           p1BobberMesh.position.z = p1State.fishingBobber.z;
+           if (p1State.fishingState === 'casting') p1BobberMesh.position.y = 0.1 + Math.sin(time * 5) * 0.05;
+           else if (p1State.fishingState === 'biting') p1BobberMesh.position.y = -0.1 + Math.random() * 0.1;
+           else if (p1State.fishingState === 'reeling') p1BobberMesh.position.y = Math.random() * 0.2;
+        } else {
+           p1TargetMesh.visible = false;
+           p1BobberMesh.visible = false;
+        }
+
+        // P2
+        if (p2State.fishingState === 'idle') {
+           p2TargetMesh.visible = true;
+           p2BobberMesh.visible = false;
+           p2TargetMesh.position.set(p2State.fishingTarget.x, 0.07, p2State.fishingTarget.z);
+        } else if (p2State.fishingState === 'casting' || p2State.fishingState === 'biting' || p2State.fishingState === 'reeling') {
+           p2TargetMesh.visible = false;
+           p2BobberMesh.visible = true;
+           p2BobberMesh.position.x = p2State.fishingBobber.x;
+           p2BobberMesh.position.z = p2State.fishingBobber.z;
+           if (p2State.fishingState === 'casting') p2BobberMesh.position.y = 0.1 + Math.sin(time * 5) * 0.05;
+           else if (p2State.fishingState === 'biting') p2BobberMesh.position.y = -0.1 + Math.random() * 0.1;
+           else if (p2State.fishingState === 'reeling') p2BobberMesh.position.y = Math.random() * 0.2;
+        } else {
+           p2TargetMesh.visible = false;
+           p2BobberMesh.visible = false;
+        }
+        
+        // Swim shadows
+        fishShadowMeshes.forEach((fMesh, i) => {
+           fMesh.position.x += Math.sin(time * 0.5 + i) * dt * 2.0;
+           fMesh.position.z += Math.cos(time * 0.4 + i) * dt * 2.0;
+           // Keep in bounds
+           fMesh.position.x = Math.max(-7, Math.min(7, fMesh.position.x));
+           fMesh.position.z = Math.max(-7, Math.min(7, fMesh.position.z));
+           fMesh.rotation.z = Math.atan2(Math.sin(time * 0.5 + i), Math.cos(time * 0.4 + i));
+        });
       }
 
       // 6. DYNAMIC SPLIT SCREEN OR SINGLE CAMERA RENDERING

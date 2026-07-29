@@ -1,6 +1,6 @@
 export type AppMode = 'menu' | 'host' | 'cast';
 
-export type GameMode = 'explorer' | 'farm';
+export type GameMode = 'explorer' | 'farm' | 'fishing';
 
 export type PlayerSlot = 'P1' | 'P2';
 
@@ -68,6 +68,11 @@ export interface SinglePlayerState {
   actionText: string;
   holdingSeed?: CropType | null;
   holdingFruit?: CropType | null;
+  fishingState?: 'idle' | 'casting' | 'biting' | 'reeling' | 'caught';
+  fishingTarget?: { x: number, z: number } | null;
+  fishingBobber?: { x: number, z: number } | null;
+  fishingProgress?: number; // 0 to 1
+  caughtFish?: { type: string, weight: number } | null;
 }
 
 export type CropType = 'carrot' | 'pumpkin' | 'berry' | 'melon';

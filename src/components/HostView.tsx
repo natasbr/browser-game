@@ -245,6 +245,16 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
             >
               <Sprout className="w-3.5 h-3.5" /> FARM SIMULATOR
             </button>
+            <button
+              onClick={() => handleModeSwitch('fishing')}
+              className={`px-3 py-1 text-xs font-pixel rounded flex items-center gap-1.5 transition-all ${
+                activeGameMode === 'fishing'
+                  ? 'bg-blue-500 text-slate-950 font-bold shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🐟 FISHING LAGOON
+            </button>
           </div>
 
           {/* BIOME OVERRIDE SELECTOR & SOUND */}

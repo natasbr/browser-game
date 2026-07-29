@@ -460,7 +460,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 >
                   <Wind className="w-5 h-5 text-white" />
                   <span className="text-[8px] font-pixel text-white">
-                    {isFarmMode ? 'ACTION' : 'DASH'}
+                    {syncedState?.gameMode === 'fishing' ? 'FISH/REEL' : isFarmMode ? 'ACTION' : 'DASH'}
                   </span>
                 </button>
               </div>
