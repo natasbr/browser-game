@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
   PlayerInputState,
@@ -20,9 +20,11 @@ import {
   saveFarmState,
   loadFishingState,
   saveFishingState,
-  loadDanceState,
-  saveDanceState,
+  loadRunSeed,
+  loadWorldCells,
+  saveWorldCells,
 } from '../lib/storage';
+import { CellData } from '../types';
 
 interface VoxelCanvasProps {
   gameMode?: GameMode;
@@ -110,6 +112,7 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
   syncedState = null,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [chestModal, setChestModal] = useState<{ reward: number; visible: boolean } | null>(null);
 
   const gameModeRef = useRef<GameMode>(gameMode);
   gameModeRef.current = gameMode;
@@ -1153,6 +1156,8 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
           p2Pos: { x: p2State.x, y: p2State.y, z: p2State.z },
           p1Score: p1ExplorerScore,
           p2Score: p2ExplorerScore,
+          teamCash: explorerTeamTotalScore,
+          runSeed: 123456,
           p1Gems: p1GemsCollected,
           p2Gems: p2GemsCollected,
           teamScore: explorerTeamTotalScore,
@@ -1930,6 +1935,18 @@ export const VoxelCanvas: React.FC<VoxelCanvasProps> = ({
     <div className="relative w-full h-full min-h-[380px] bg-slate-950 rounded-lg overflow-hidden border-2 border-slate-700">
       <div ref={mountRef} className="w-full h-full min-h-[380px]" />
       <div className="crt-overlay absolute inset-0 pointer-events-none" />
+
+      {/* CHEST OPEN REWARD DIALOG POPUP */}
+      {chestModal?.visible && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fade-in pointer-events-auto">
+          <div className="retro-box p-6 bg-slate-900 border-4 border-amber-400 text-center max-w-sm mx-auto shadow-2xl">
+            <div className="text-4xl mb-2 animate-bounce">🎁✨</div>
+            <div className="text-xl font-pixel text-amber-300 mb-1">CHEST OPENED!</div>
+            <div className="text-3xl font-vt text-emerald-400 font-bold mb-3">+{chestModal.reward} COINS!</div>
+            <div className="text-xs text-slate-300 font-vt">Confetti & riches secured in the adventure vault!</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

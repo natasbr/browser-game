@@ -247,7 +247,7 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
             {assignedSlot ? `${assignedSlot} LIVE POV CAST` : 'CAST REMOTE'}
           </div>
           <div className="text-[10px] font-vt text-slate-400">
-            {syncedState?.gameMode === 'fishing' ? '🎣 FISHING LAGOON CONTROLLER' : syncedState?.gameMode === 'dance' ? '🕺 DISCO DANCE CONTROLLER' : isFarmMode ? '🌾 FARM SIMULATOR CONTROLLER' : '🏆 ARENA EXPLORER CONTROLLER'}
+            {syncedState?.gameMode === 'fishing' ? '🎣 FISHING LAGOON CONTROLLER' : isFarmMode ? '🌾 FARM SIMULATOR CONTROLLER' : '🏆 ARENA EXPLORER CONTROLLER'}
           </div>
         </div>
 
@@ -443,66 +443,35 @@ export const CastView: React.FC<CastViewProps> = ({ onBackToMenu }) => {
                 </div>
               </div>
 
-              {/* ACTION BUTTONS / DANCE EMOTES */}
+              {/* ACTION BUTTONS */}
               <div className="flex items-center gap-2">
-                {syncedState?.gameMode === 'dance' ? (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={() => handleDanceEmote(1)}
-                      className="w-12 h-12 rounded-lg bg-purple-600 border border-purple-300 flex flex-col items-center justify-center active:scale-95 shadow font-pixel text-[8px] text-white"
-                    >
-                      🕺 DANCE 1
-                    </button>
-                    <button
-                      onClick={() => handleDanceEmote(2)}
-                      className="w-12 h-12 rounded-lg bg-indigo-600 border border-indigo-300 flex flex-col items-center justify-center active:scale-95 shadow font-pixel text-[8px] text-white"
-                    >
-                      👟 DANCE 2
-                    </button>
-                    <button
-                      onClick={() => handleDanceEmote(3)}
-                      className="w-12 h-12 rounded-lg bg-blue-600 border border-blue-300 flex flex-col items-center justify-center active:scale-95 shadow font-pixel text-[8px] text-white"
-                    >
-                      🤖 DANCE 3
-                    </button>
-                    <button
-                      onClick={() => handleDanceEmote(4)}
-                      className="w-12 h-12 rounded-lg bg-pink-600 border border-pink-300 flex flex-col items-center justify-center active:scale-95 shadow font-pixel text-[8px] text-white"
-                    >
-                      💃 DANCE 4
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    {/* JUMP / A */}
-                    <button
-                      onMouseDown={handleJumpPress}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        handleJumpPress();
-                      }}
-                      className="w-14 h-14 rounded-full retro-btn-yellow flex flex-col items-center justify-center active:scale-95 shadow-md"
-                    >
-                      <Zap className="w-5 h-5 text-amber-950" />
-                      <span className="text-[8px] font-pixel text-amber-950">JUMP</span>
-                    </button>
+                {/* JUMP / A */}
+                <button
+                  onMouseDown={handleJumpPress}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleJumpPress();
+                  }}
+                  className="w-14 h-14 rounded-full retro-btn-yellow flex flex-col items-center justify-center active:scale-95 shadow-md"
+                >
+                  <Zap className="w-5 h-5 text-amber-950" />
+                  <span className="text-[8px] font-pixel text-amber-950">JUMP</span>
+                </button>
 
-                    {/* DASH / ACTION / B */}
-                    <button
-                      onMouseDown={handleDashPress}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        handleDashPress();
-                      }}
-                      className="w-14 h-14 rounded-full retro-btn-red flex flex-col items-center justify-center active:scale-95 shadow-lg border-2 border-rose-300"
-                    >
-                      <Wind className="w-5 h-5 text-white" />
-                      <span className="text-[8px] font-pixel text-white">
-                        {syncedState?.gameMode === 'fishing' ? 'FISH/REEL' : isFarmMode ? 'ACTION' : 'DASH'}
-                      </span>
-                    </button>
-                  </>
-                )}
+                {/* SWORD / ACTION / B */}
+                <button
+                  onMouseDown={handleDashPress}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleDashPress();
+                  }}
+                  className="w-14 h-14 rounded-full retro-btn-red flex flex-col items-center justify-center active:scale-95 shadow-lg border-2 border-rose-300"
+                >
+                  <Wind className="w-5 h-5 text-white" />
+                  <span className="text-[8px] font-pixel text-white">
+                    {syncedState?.gameMode === 'fishing' ? 'FISH/REEL' : isFarmMode ? 'ACTION' : 'SWORD'}
+                  </span>
+                </button>
               </div>
             </div>
           </div>

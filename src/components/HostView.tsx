@@ -18,7 +18,7 @@ import {
 } from '../lib/multiplayer';
 import { sound } from '../lib/sound';
 import { MONSTER_VARIANTS } from '../lib/monsters';
-import { loadActiveGameMode, saveActiveGameMode } from '../lib/storage';
+import { loadActiveGameMode, saveActiveGameMode, loadRunSeed, resetAdventure } from '../lib/storage';
 import {
   Wifi,
   Volume2,
@@ -34,6 +34,8 @@ import {
   Gamepad2,
   Save,
   Fish,
+  RefreshCw,
+  Heart,
 } from 'lucide-react';
 
 interface HostViewProps {
@@ -42,6 +44,8 @@ interface HostViewProps {
 
 export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
   const [activeGameMode, setActiveGameMode] = useState<GameMode>(() => loadActiveGameMode());
+  const [runSeed, setRunSeed] = useState<number>(() => loadRunSeed());
+  const [resetStep, setResetStep] = useState<number>(0);
 
   const [hostPins, setHostPins] = useState<{ p1Pin: string; p2Pin: string }>({
     p1Pin: '----',
@@ -207,6 +211,18 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
     sound.playBeep(520, 0.1);
   };
 
+  const handleResetAdventureConfirm = () => {
+    if (resetStep === 0) {
+      setResetStep(1);
+      setTimeout(() => setResetStep(0), 4000);
+    } else {
+      const res = resetAdventure();
+      setRunSeed(res.seed);
+      setResetStep(0);
+      window.location.reload();
+    }
+  };
+
   const handleGameStateUpdate = (data: GameStatePayload) => {
     setGameState(data);
 
@@ -267,20 +283,14 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
             >
               🐟 FISHING LAGOON
             </button>
-            <button
-              onClick={() => handleModeSwitch('dance')}
-              className={`px-3 py-1 text-xs font-pixel rounded flex items-center gap-1.5 transition-all ${
-                activeGameMode === 'dance'
-                  ? 'bg-purple-500 text-slate-950 font-bold shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              🕺 DISCO DANCE
-            </button>
           </div>
 
-          {/* BIOME OVERRIDE SELECTOR & SOUND */}
+          {/* SEED DISPLAY & BIOME OVERRIDE & RESET ADVENTURE */}
           <div className="flex items-center gap-2">
+            <div className="text-[10px] font-mono bg-slate-950 px-2 py-1 rounded text-amber-300 border border-amber-500/30">
+              SEED: #{runSeed}
+            </div>
+
             {activeGameMode === 'explorer' && (
               <select
                 value={stageTheme}
@@ -300,14 +310,15 @@ export const HostView: React.FC<HostViewProps> = ({ onBackToMenu }) => {
             </div>
 
             <button
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              className="retro-btn text-[10px] px-2.5 py-1 bg-red-950/80 text-red-300 border border-red-600 hover:bg-red-900 flex items-center gap-1 font-pixel shadow"
-              title="Reset All Scores & Progress"
+              onClick={handleResetAdventureConfirm}
+              className={`retro-btn text-[10px] px-2.5 py-1 ${
+                resetStep === 1
+                  ? 'bg-red-600 text-white animate-bounce'
+                  : 'bg-red-950/80 text-red-300 border border-red-600 hover:bg-red-900'
+              } flex items-center gap-1 font-pixel shadow`}
+              title="Reset Adventure & Generate New Seed"
             >
-              🔄 RESET SCORES
+              {resetStep === 1 ? '⚠️ CONFIRM RESET WORLD?' : '🔄 RESET ADVENTURE'}
             </button>
 
             <button onClick={toggleSound} className="retro-btn p-1.5 text-amber-300">

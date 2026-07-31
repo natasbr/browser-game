@@ -1,6 +1,6 @@
 export type AppMode = 'menu' | 'host' | 'cast';
 
-export type GameMode = 'explorer' | 'farm' | 'fishing' | 'dance';
+export type GameMode = 'explorer' | 'farm' | 'fishing';
 
 export type PlayerSlot = 'P1' | 'P2';
 
@@ -74,9 +74,73 @@ export interface SinglePlayerState {
   fishingProgress?: number; // 0 to 1
   caughtFish?: { type: string, weight: number } | null;
   fishCaughtCount?: number;
-  danceScore?: number;
-  comboStreak?: number;
-  activeDanceEmote?: number; // 0 = none, 1 = breakdance, 2 = shuffle, 3 = robot, 4 = salsa
+  health: number; // 1 to 3 hearts
+  maxHealth: number;
+  isSwinging?: boolean;
+  swingProgress?: number;
+  swordSide?: 'left' | 'right';
+}
+
+export interface CellCoin {
+  id: string;
+  x: number;
+  z: number;
+  collected: boolean;
+}
+
+export interface CellChest {
+  id: string;
+  x: number;
+  z: number;
+  opened: boolean;
+  reward: number; // 50 to 500
+}
+
+export interface CellEnemy {
+  id: string;
+  x: number;
+  z: number;
+  hp: number;
+  maxHp: number;
+  type: 'green' | 'blue' | 'yellow' | 'boss';
+  alive: boolean;
+  blinkTimer: number;
+  xDir: number;
+  zDir: number;
+}
+
+export interface CellHeart {
+  id: string;
+  x: number;
+  z: number;
+  collected: boolean;
+}
+
+export interface CellScenery {
+  id: string;
+  x: number;
+  z: number;
+  type: 'tree' | 'rock' | 'column';
+  color: string;
+}
+
+export interface CellCritter {
+  id: string;
+  x: number;
+  z: number;
+  type: 'bird' | 'bug';
+  alive: boolean;
+}
+
+export interface CellData {
+  cx: number;
+  cy: number;
+  coins: CellCoin[];
+  chests: CellChest[];
+  enemies: CellEnemy[];
+  hearts: CellHeart[];
+  scenery: CellScenery[];
+  critters: CellCritter[];
 }
 
 export type CropType = 'carrot' | 'pumpkin' | 'berry' | 'melon';
