@@ -1,6 +1,6 @@
 {
-  "name": "Voxel Monsters",
-  "description": "Voxel monsters retro game with PeerJS host and cast controls.",
+  "name": "Primordial Soup - Cell & Creature Evolution Simulator 3D",
+  "description": "Immersive 3D primordial soup evolution simulation with soft-body organisms, 7-gene genetics, dynamic lighting, tilt-shift microscope optics, and WebXR VR support.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
